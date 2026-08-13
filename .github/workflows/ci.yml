@@ -36,8 +36,14 @@ jobs:
       - name: Test palette generator
         run: pnpm run test:generator
 
+      - name: Test publication strategy
+        run: pnpm run test:publication-strategy
+
       - name: Render generated palette
         run: pnpm run test:generated-render
+
+      - name: Render publication preview
+        run: pnpm run test:publication-preview
 
       - name: Render Figma palette theme
         run: pnpm run test:generated-render:figma

@@ -75,6 +75,30 @@ Available harmony modes:
 
 The generator creates a batch of candidates, scores them for contrast, separation, harmony, lightness, and usability, then keeps the strongest result.
 
+## Step 2.1: Publication Strategy
+
+Create a deterministic post plan and render the post preview:
+
+```bash
+pnpm run publish:preview -- --date 2026-08-13 --attempts 16 --min-score 70 --plan output/post-plan.json --json output/post-palette.json --png output/post-palette.png
+```
+
+The publication strategy picks the post inputs from a date-based seed:
+
+- color count
+- preset
+- harmony mode compatible with the preset
+- candidate batch size
+- renderer theme, currently `technical` by default
+
+The selection is pseudo-random but repeatable. The same date or seed produces the same post plan, which keeps scheduled runs debuggable and reproducible. The preview command can test several strategy attempts and keeps the strongest plan above the minimum score.
+
+You can still override any decision:
+
+```bash
+pnpm run publish:preview -- --date 2026-08-13 --colors 7 --preset brand-vivid --harmony triadic --candidates 32 --theme technical --min-score 70
+```
+
 The default renderer theme is `technical`. Use the Figma-matched template when needed:
 
 ```bash
@@ -86,6 +110,7 @@ Check generator determinism and color validity:
 
 ```bash
 pnpm run test:generator
+pnpm run test:publication-strategy
 ```
 
 Palette JSON format:

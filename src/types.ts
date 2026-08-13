@@ -40,6 +40,17 @@ export type PaletteMetadata = {
   scoreBreakdown: PaletteScoreBreakdown
 }
 
+export type PalettePublicationPlan = {
+  date: string
+  seed: string
+  strategyAttempt: number
+  colorCount: number
+  preset: PalettePreset
+  harmony: PaletteHarmony
+  candidates: number
+  rendererTheme: "technical" | "figma"
+}
+
 export type Palette = {
   paletteName: string
   colors: PaletteColor[]

@@ -189,6 +189,12 @@ export function parsePaletteHarmony(value: string): PaletteHarmony {
   throw new Error(`Unknown palette harmony: ${value}`)
 }
 
+export function getPaletteHarmoniesForPreset(
+  preset: PalettePreset,
+): readonly PaletteHarmony[] {
+  return presetConfigs[preset].harmonies
+}
+
 function selectBestCandidate(options: {
   colorCount: number
   seed: string
