@@ -1,0 +1,13 @@
+{
+  "paletteName": "Quiet Contrast",
+  "colors": [
+    {
+      "name": "Porcelain",
+      "hex": "#F6F2EA"
+    },
+    {
+      "name": "Graphite",
+      "hex": "#1D2026"
+    }
+  ]
+}

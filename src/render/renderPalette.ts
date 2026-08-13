@@ -74,6 +74,7 @@ function validatePalette(palette: Palette) {
 }
 
 function createPaletteHtml(palette: Palette) {
+  const isDensePalette = palette.colors.length >= 6
   const columns = palette.colors
     .map((color, index) => {
       const textColor = getReadableTextColor(color.hex)
@@ -161,7 +162,7 @@ function createPaletteHtml(palette: Palette) {
 
           .swatch {
             min-width: 0;
-            padding: 28px;
+            padding: ${isDensePalette ? "24px" : "28px"};
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -184,7 +185,7 @@ function createPaletteHtml(palette: Palette) {
 
           .colorName {
             margin-bottom: 12px;
-            font-size: clamp(22px, ${palette.colors.length <= 4 ? "38px" : "30px"}, 42px);
+            font-size: ${isDensePalette ? "24px" : palette.colors.length <= 4 ? "38px" : "30px"};
             line-height: 1;
             font-weight: 700;
             overflow-wrap: anywhere;

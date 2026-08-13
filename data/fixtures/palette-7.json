@@ -1,0 +1,33 @@
+{
+  "paletteName": "Signal Garden",
+  "colors": [
+    {
+      "name": "Paper",
+      "hex": "#F8F3E7"
+    },
+    {
+      "name": "Mist",
+      "hex": "#C8D8D4"
+    },
+    {
+      "name": "Stem",
+      "hex": "#7FA06D"
+    },
+    {
+      "name": "Marigold",
+      "hex": "#E0A72E"
+    },
+    {
+      "name": "Vermilion",
+      "hex": "#D55D45"
+    },
+    {
+      "name": "Berry",
+      "hex": "#8E3D62"
+    },
+    {
+      "name": "Night",
+      "hex": "#1F2530"
+    }
+  ]
+}

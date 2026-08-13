@@ -20,6 +20,14 @@ You can pass custom paths:
 pnpm run render -- data/my-palette.json output/my-palette.png
 ```
 
+Render the fixture set for 2, 3, 5, and 7 colors:
+
+```bash
+pnpm run test:render
+```
+
+This writes PNG files to `output/fixtures/` and checks that every rendered image is exactly 1440 x 1153 px.
+
 Palette JSON format:
 
 ```json
