@@ -1,25 +1,17 @@
 {
-  "paletteName": "Mineral Bloom",
+  "paletteName": "Der Baukasten",
   "colors": [
     {
-      "name": "Chalk",
-      "hex": "#F5F1E8"
+      "name": "Saffron",
+      "hex": "#EBBD1A"
     },
     {
-      "name": "Sage",
-      "hex": "#A8B89C"
+      "name": "Coquelicot",
+      "hex": "#F54D25"
     },
     {
-      "name": "Clay",
-      "hex": "#C7785A"
-    },
-    {
-      "name": "Ink",
-      "hex": "#202329"
-    },
-    {
-      "name": "Moss",
-      "hex": "#4A5A40"
+      "name": "Azure",
+      "hex": "#057DF7"
     }
   ]
 }

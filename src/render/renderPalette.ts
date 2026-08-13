@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises"
+import { mkdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import { chromium } from "playwright"
 import type { Palette } from "../types.js"
@@ -7,6 +7,8 @@ const CANVAS_WIDTH = 1440
 const CANVAS_HEIGHT = 1153
 const MIN_COLORS = 2
 const MAX_COLORS = 7
+const PALETTE_WIDTH = 1008
+const PALETTE_GAP = 24
 
 export type RenderPaletteOptions = {
   outputPath: string
@@ -30,7 +32,7 @@ export async function renderPalette(
   })
 
   try {
-    await page.setContent(createPaletteHtml(palette), {
+    await page.setContent(await createPaletteHtml(palette), {
       waitUntil: "networkidle",
     })
     await page.screenshot({
@@ -73,22 +75,29 @@ function validatePalette(palette: Palette) {
   }
 }
 
-function createPaletteHtml(palette: Palette) {
+async function createPaletteHtml(palette: Palette) {
   const isDensePalette = palette.colors.length >= 6
+  const logoDataUri = await readLogoDataUri()
+  const colorItemWidth =
+    (PALETTE_WIDTH - PALETTE_GAP * (palette.colors.length - 1)) /
+    palette.colors.length
+  const radius = Math.min(91, Math.round(colorItemWidth * 0.285))
+  const colorNameSize = palette.colors.length <= 3 ? 24 : isDensePalette ? 18 : 22
+  const colorCodeSize = palette.colors.length <= 3 ? 24 : isDensePalette ? 18 : 20
   const columns = palette.colors
-    .map((color, index) => {
-      const textColor = getReadableTextColor(color.hex)
-
-      return `
-        <section class="swatch" style="background: ${escapeHtml(color.hex)}; color: ${textColor};">
-          <div class="swatchIndex">${String(index + 1).padStart(2, "0")}</div>
-          <div class="swatchMeta">
-            <div class="colorName">${escapeHtml(color.name)}</div>
-            <div class="hex">${escapeHtml(color.hex.toUpperCase())}</div>
+    .map(
+      (color) => `
+        <section class="colorSection">
+          <div class="colorItem" style="background: ${escapeHtml(color.hex)};">
+            <div class="colorName" style="color: ${getReadableTextColor(color.hex)};">${escapeHtml(color.name)}</div>
+          </div>
+          <div class="colorCode">
+            <div>HEX</div>
+            <div>${escapeHtml(color.hex.toUpperCase())}</div>
           </div>
         </section>
-      `
-    })
+      `,
+    )
     .join("")
 
   return `
@@ -105,138 +114,117 @@ function createPaletteHtml(palette: Palette) {
             width: ${CANVAS_WIDTH}px;
             height: ${CANVAS_HEIGHT}px;
             margin: 0;
-            background: #f2eee6;
-            color: #171717;
+            background: #ffffff;
+            color: #474f7a;
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
           }
 
           .canvas {
             width: ${CANVAS_WIDTH}px;
             height: ${CANVAS_HEIGHT}px;
-            padding: 72px;
-            display: grid;
-            grid-template-rows: auto 1fr auto;
-            gap: 42px;
+            position: relative;
+            overflow: hidden;
           }
 
           .header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 48px;
-          }
-
-          .eyebrow {
-            margin-bottom: 18px;
-            color: #5d5a53;
-            font-size: 26px;
-            line-height: 1;
-            letter-spacing: 0;
-          }
-
-          h1 {
-            max-width: 980px;
-            margin: 0;
-            font-size: 86px;
-            line-height: 0.95;
-            font-weight: 760;
-            letter-spacing: 0;
-          }
-
-          .count {
-            min-width: 140px;
-            padding-top: 8px;
-            text-align: right;
-            color: #5d5a53;
-            font-size: 28px;
-            line-height: 1.1;
-          }
-
-          .palette {
-            min-height: 0;
-            display: grid;
-            grid-template-columns: repeat(${palette.colors.length}, minmax(0, 1fr));
-            overflow: hidden;
-            border: 2px solid rgba(23, 23, 23, 0.16);
-          }
-
-          .swatch {
-            min-width: 0;
-            padding: ${isDensePalette ? "24px" : "28px"};
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            border-right: 2px solid rgba(23, 23, 23, 0.16);
-          }
-
-          .swatch:last-child {
-            border-right: 0;
-          }
-
-          .swatchIndex {
-            font-size: 20px;
-            line-height: 1;
-            opacity: 0.72;
-          }
-
-          .swatchMeta {
-            min-width: 0;
-          }
-
-          .colorName {
-            margin-bottom: 12px;
-            font-size: ${isDensePalette ? "24px" : palette.colors.length <= 4 ? "38px" : "30px"};
-            line-height: 1;
-            font-weight: 700;
-            overflow-wrap: anywhere;
-          }
-
-          .hex {
-            font-size: 20px;
-            line-height: 1;
-            font-weight: 650;
-            opacity: 0.78;
-          }
-
-          .footer {
+            position: absolute;
+            left: 216px;
+            top: 161px;
+            width: ${PALETTE_WIDTH}px;
+            height: 88px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            color: #5d5a53;
-            font-size: 24px;
-            line-height: 1;
           }
 
-          .rule {
-            width: 420px;
-            height: 2px;
-            background: rgba(23, 23, 23, 0.18);
+          h1 {
+            margin: 0;
+            color: #474f7a;
+            font-size: 40px;
+            line-height: normal;
+            font-weight: 700;
+            letter-spacing: 0;
+            white-space: nowrap;
+          }
+
+          .logo {
+            width: 363px;
+            height: 88px;
+            display: block;
+            object-fit: contain;
+          }
+
+          .palette {
+            position: absolute;
+            left: 216px;
+            top: 329px;
+            width: ${PALETTE_WIDTH}px;
+            height: 691px;
+            display: grid;
+            grid-template-columns: repeat(${palette.colors.length}, minmax(0, 1fr));
+            gap: ${PALETTE_GAP}px;
+            align-items: start;
+          }
+
+          .colorSection {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+          }
+
+          .colorName {
+            width: 100%;
+            color: #ffffff;
+            font-size: ${colorNameSize}px;
+            line-height: normal;
+            font-weight: 700;
+            text-align: center;
+            word-break: break-word;
+          }
+
+          .colorItem {
+            width: 100%;
+            height: 593px;
+            padding: 0 ${isDensePalette ? 16 : 32}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-top-left-radius: ${radius}px;
+            border-top-right-radius: ${radius}px;
+            border-bottom-right-radius: ${radius}px;
+            border-bottom-left-radius: 0;
+          }
+
+          .colorCode {
+            width: 100%;
+            color: #474f7a;
+            font-size: ${colorCodeSize}px;
+            line-height: normal;
+            font-weight: 700;
+            word-break: break-word;
           }
         </style>
       </head>
       <body>
         <main class="canvas">
           <header class="header">
-            <div>
-              <div class="eyebrow">Palette Study</div>
-              <h1>${escapeHtml(palette.paletteName)}</h1>
-            </div>
-            <div class="count">${palette.colors.length} colors</div>
+            <h1>${escapeHtml(palette.paletteName)}</h1>
+            <img class="logo" src="${logoDataUri}" alt="" />
           </header>
 
           <div class="palette">
             ${columns}
           </div>
-
-          <footer class="footer">
-            <div>1440 x 1153 px</div>
-            <div class="rule"></div>
-            <div>palette-bot</div>
-          </footer>
         </main>
       </body>
     </html>
   `
+}
+
+async function readLogoDataUri() {
+  const logo = await readFile(path.resolve("assets/logo.svg"))
+  return `data:image/svg+xml;base64,${logo.toString("base64")}`
 }
 
 function getReadableTextColor(hex: string) {
@@ -246,7 +234,7 @@ function getReadableTextColor(hex: string) {
   const blue = Number.parseInt(normalized.slice(4, 6), 16)
   const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
 
-  return luminance > 0.62 ? "#171717" : "#fffaf0"
+  return luminance > 0.78 ? "#474f7a" : "#ffffff"
 }
 
 function escapeHtml(value: string) {

@@ -1,17 +1,17 @@
 {
-  "paletteName": "Citrus Field",
+  "paletteName": "Der Baukasten",
   "colors": [
     {
-      "name": "Linen",
-      "hex": "#EFE7D3"
+      "name": "Saffron",
+      "hex": "#EBBD1A"
     },
     {
-      "name": "Yuzu",
-      "hex": "#E8B931"
+      "name": "Coquelicot",
+      "hex": "#F54D25"
     },
     {
-      "name": "Cedar",
-      "hex": "#31483A"
+      "name": "Azure",
+      "hex": "#057DF7"
     }
   ]
 }
