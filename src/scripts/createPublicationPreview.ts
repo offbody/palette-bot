@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { generatePalette } from "../generator/generatePalette.js"
+import { createPaletteMessage } from "../publishing/createPaletteMessage.js"
 import { createPublicationPlan } from "../publishing/createPublicationPlan.js"
 import {
   parseRenderPaletteTheme,
@@ -12,6 +13,7 @@ const args = parseArgs(process.argv.slice(2))
 const planPath = path.resolve(args.plan ?? "output/post-plan.json")
 const jsonPath = path.resolve(args.json ?? "output/post-palette.json")
 const pngPath = path.resolve(args.png ?? "output/post-palette.png")
+const messagePath = path.resolve(args.message ?? "output/post-message.txt")
 const rendererTheme = args.theme
   ? parseRenderPaletteTheme(args.theme)
   : undefined
@@ -37,14 +39,17 @@ const { plan, palette } = createPreview({
   strategyAttempts,
   minimumScore,
 })
+const message = createPaletteMessage(palette)
 
 await Promise.all([
   mkdir(path.dirname(planPath), { recursive: true }),
   mkdir(path.dirname(jsonPath), { recursive: true }),
   mkdir(path.dirname(pngPath), { recursive: true }),
+  mkdir(path.dirname(messagePath), { recursive: true }),
 ])
 await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`, "utf8")
 await writeFile(jsonPath, `${JSON.stringify(palette, null, 2)}\n`, "utf8")
+await writeFile(messagePath, `${message}\n`, "utf8")
 await renderPalette(palette, {
   outputPath: pngPath,
   theme: plan.rendererTheme,
@@ -52,6 +57,7 @@ await renderPalette(palette, {
 
 console.log(`Planned ${path.relative(process.cwd(), planPath)}`)
 console.log(`Generated ${path.relative(process.cwd(), jsonPath)}`)
+console.log(`Wrote ${path.relative(process.cwd(), messagePath)}`)
 console.log(`Rendered ${path.relative(process.cwd(), pngPath)}`)
 
 function createPreview(options: {

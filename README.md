@@ -80,7 +80,7 @@ The generator creates a batch of candidates, scores them for contrast, separatio
 Create a deterministic post plan and render the post preview:
 
 ```bash
-pnpm run publish:preview -- --date 2026-08-13 --attempts 16 --min-score 70 --plan output/post-plan.json --json output/post-palette.json --png output/post-palette.png
+pnpm run publish:preview -- --date 2026-08-13 --attempts 16 --min-score 70 --plan output/post-plan.json --json output/post-palette.json --png output/post-palette.png --message output/post-message.txt
 ```
 
 The publication strategy picks the post inputs from a date-based seed:
@@ -90,13 +90,25 @@ The publication strategy picks the post inputs from a date-based seed:
 - harmony mode compatible with the preset
 - candidate batch size
 - renderer theme, currently `technical` by default
+- Telegram-ready message text with color names and hex codes
 
 The selection is pseudo-random but repeatable. The same date or seed produces the same post plan, which keeps scheduled runs debuggable and reproducible. The preview command can test several strategy attempts and keeps the strongest plan above the minimum score.
+
+Post message format:
+
+```text
+Linen #FDF0D8
+Dust #A5D3FF
+Coral #BFA431
+Cedar #7A82D1
+Sage #945427
+Ochre #194762
+```
 
 You can still override any decision:
 
 ```bash
-pnpm run publish:preview -- --date 2026-08-13 --colors 7 --preset brand-vivid --harmony triadic --candidates 32 --theme technical --min-score 70
+pnpm run publish:preview -- --date 2026-08-13 --colors 7 --preset brand-vivid --harmony triadic --candidates 32 --theme technical --min-score 70 --message output/post-message.txt
 ```
 
 The default renderer theme is `technical`. Use the Figma-matched template when needed:
