@@ -1,6 +1,8 @@
 name: Publish
 
 on:
+  schedule:
+    - cron: "0 9 * * *"
   workflow_dispatch:
     inputs:
       date:
@@ -27,11 +29,12 @@ jobs:
   publish:
     name: Publish Palette
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 95
 
     env:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      JITTER_MAX_MINUTES: 70
 
     steps:
       - name: Check out repository
@@ -55,17 +58,33 @@ jobs:
       - name: Resolve publication date
         id: publication
         run: |
-          if [ -n "${{ inputs.date }}" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.date }}" ]; then
             echo "date=${{ inputs.date }}" >> "$GITHUB_OUTPUT"
           else
             echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
           fi
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            echo "attempts=16" >> "$GITHUB_OUTPUT"
+            echo "min_score=70" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry_run=${{ inputs.dry_run }}" >> "$GITHUB_OUTPUT"
+            echo "attempts=${{ inputs.attempts }}" >> "$GITHUB_OUTPUT"
+            echo "min_score=${{ inputs.min_score }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply scheduled jitter
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          delay=$((0x$(printf '%s' "${{ steps.publication.outputs.date }}" | sha256sum | cut -c1-8) % (JITTER_MAX_MINUTES + 1)))
+          echo "Scheduled jitter: ${delay} minutes"
+          sleep "${delay}m"
 
       - name: Create publication preview
         run: >
           pnpm run publish:preview -- --date "${{ steps.publication.outputs.date }}"
-          --attempts "${{ inputs.attempts }}"
-          --min-score "${{ inputs.min_score }}"
+          --attempts "${{ steps.publication.outputs.attempts }}"
+          --min-score "${{ steps.publication.outputs.min_score }}"
           --plan output/post-plan.json
           --json output/post-palette.json
           --png output/post-palette.png
@@ -77,14 +96,14 @@ jobs:
           pnpm run check:message -- output/post-message.txt
 
       - name: Telegram dry-run
-        if: ${{ inputs.dry_run }}
+        if: ${{ steps.publication.outputs.dry_run == 'true' }}
         run: >
           pnpm run publish:telegram:dry-run --
           --photo output/post-palette.png
           --message output/post-message.txt
 
       - name: Publish to Telegram
-        if: ${{ !inputs.dry_run }}
+        if: ${{ steps.publication.outputs.dry_run != 'true' }}
         run: >
           pnpm run publish:telegram --
           --photo output/post-palette.png

@@ -138,6 +138,8 @@ Manual GitHub Actions publishing:
 3. Keep `dry_run` enabled for the first check.
 4. Disable `dry_run` only when you want to publish to the Telegram channel.
 
+Scheduled GitHub Actions publishing runs daily at 09:00 UTC. It applies a deterministic 0 to 70 minute delay before publishing, so posts land between 13:00 and 14:10 in the Europe/Samara timezone. Manual runs do not wait.
+
 You can still override any decision:
 
 ```bash
