@@ -267,7 +267,6 @@ async function createFigmaPaletteHtml(palette: Palette) {
     palette.colors.length
   const radius = Math.min(91, Math.round(colorItemWidth * 0.285))
   const colorNameSize = palette.colors.length <= 2 ? 44 : 40
-  const colorCodeSize = palette.colors.length <= 2 ? 44 : 40
   const columns = palette.colors
     .map(
       (color) => `
@@ -381,9 +380,10 @@ async function createFigmaPaletteHtml(palette: Palette) {
 
       .colorCode {
         width: 100%;
+        height: 80px;
         color: #474f7a;
-        font-size: ${colorCodeSize}px;
-        line-height: normal;
+        font-size: 32px;
+        line-height: 40px;
         font-weight: 800;
         word-break: break-word;
       }
