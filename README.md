@@ -154,6 +154,31 @@ The default publication renderer theme is `figma`. Use the technical template wh
 pnpm run publish:preview -- --date 2026-08-13 --theme technical --png output/post-palette.png --message output/post-message.txt
 ```
 
+## Step 3.1: Telegram Control Bot
+
+The control bot is a separate layer over GitHub Actions. It does not generate or publish posts directly. Instead, it opens an inline keyboard in Telegram and dispatches the existing `Publish` workflow with selected inputs.
+
+Create `.secrets/control.env`:
+
+```env
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_ADMIN_USER_IDS=
+GITHUB_TOKEN=
+GITHUB_REPOSITORY=offbody/palette-bot
+GITHUB_WORKFLOW_ID=publish.yml
+GITHUB_REF=main
+```
+
+`TELEGRAM_ADMIN_USER_IDS` is a comma-separated list of numeric Telegram user ids allowed to control publishing. If a non-whitelisted user opens the bot, the bot replies with that user's numeric id for setup. `GITHUB_TOKEN` must be allowed to dispatch repository workflows and can be the same PAT used for repository automation.
+
+Run the local control bot:
+
+```bash
+pnpm run telegram:control -- --env .secrets/control.env
+```
+
+Then send `/publish` to the bot. The inline keyboard can adjust `dry_run`, `attempts`, `min_score`, `preset`, and `harmony`, then run the same GitHub Actions `Publish` workflow.
+
 Check generator determinism and color validity:
 
 ```bash
