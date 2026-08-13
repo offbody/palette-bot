@@ -89,7 +89,7 @@ The publication strategy picks the post inputs from a date-based seed:
 - preset
 - harmony mode compatible with the preset
 - candidate batch size
-- renderer theme, currently `technical` by default
+- renderer theme, currently `figma` by default
 - Telegram-ready message text with color names and hex codes
 
 The selection is pseudo-random but repeatable. The same date or seed produces the same post plan, which keeps scheduled runs debuggable and reproducible. The preview command can test several strategy attempts and keeps the strongest plan above the minimum score.
@@ -148,11 +148,10 @@ You can still override any decision:
 pnpm run publish:preview -- --date 2026-08-13 --colors 7 --preset brand-vivid --harmony triadic --candidates 32 --theme technical --min-score 70 --message output/post-message.txt
 ```
 
-The default renderer theme is `technical`. Use the Figma-matched template when needed:
+The default publication renderer theme is `figma`. Use the technical template when needed:
 
 ```bash
-pnpm run render -- output/generated-palette.json output/generated-palette.png --theme figma
-pnpm run render:generated -- --colors 3 --seed 2026-08-13 --theme figma --json output/generated-palette.json --png output/generated-palette.png
+pnpm run publish:preview -- --date 2026-08-13 --theme technical --png output/post-palette.png --message output/post-message.txt
 ```
 
 Check generator determinism and color validity:

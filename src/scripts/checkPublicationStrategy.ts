@@ -26,7 +26,7 @@ for (let day = 1; day <= 30; day += 1) {
     )
   }
 
-  if (plan.rendererTheme !== "technical") {
+  if (plan.rendererTheme !== "figma") {
     throw new Error(`Unexpected default renderer theme: ${plan.rendererTheme}`)
   }
 }

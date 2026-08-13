@@ -88,7 +88,7 @@ export function createPublicationPlan(
     preset,
     harmony,
     candidates,
-    rendererTheme: options.rendererTheme ?? "technical",
+    rendererTheme: options.rendererTheme ?? "figma",
   }
 }
 
