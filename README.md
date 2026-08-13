@@ -105,6 +105,32 @@ Sage #945427
 Ochre #194762
 ```
 
+## Step 3: Telegram Publisher
+
+Local Telegram credentials are read from `.secrets/telegram.env`:
+
+```env
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+```
+
+Check channel access without publishing:
+
+```bash
+pnpm run publish:telegram:dry-run -- --env .secrets/telegram.env --photo output/post-palette.png --message output/post-message.txt
+```
+
+Publish the generated post:
+
+```bash
+pnpm run publish:telegram -- --env .secrets/telegram.env --photo output/post-palette.png --message output/post-message.txt
+```
+
+For GitHub Actions, add these repository secrets:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+
 You can still override any decision:
 
 ```bash
