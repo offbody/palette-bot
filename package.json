@@ -1,0 +1,19 @@
+{
+  "name": "palette-bot",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "render": "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright node --import tsx src/index.ts",
+    "playwright:install": "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright playwright install chromium",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "playwright": "^1.54.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "paletteName": "Mineral Bloom",
+  "colors": [
+    {
+      "name": "Chalk",
+      "hex": "#F5F1E8"
+    },
+    {
+      "name": "Sage",
+      "hex": "#A8B89C"
+    },
+    {
+      "name": "Clay",
+      "hex": "#C7785A"
+    },
+    {
+      "name": "Ink",
+      "hex": "#202329"
+    },
+    {
+      "name": "Moss",
+      "hex": "#4A5A40"
+    }
+  ]
+}
