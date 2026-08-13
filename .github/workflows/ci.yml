@@ -39,5 +39,8 @@ jobs:
       - name: Render generated palette
         run: pnpm run test:generated-render
 
+      - name: Render Figma palette theme
+        run: pnpm run test:generated-render:figma
+
       - name: Render fixture palettes
         run: pnpm run test:render

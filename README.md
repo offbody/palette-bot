@@ -48,6 +48,13 @@ Generate and render in one command:
 pnpm run render:generated -- --colors 7 --seed 2026-08-13 --json output/generated-palette.json --png output/generated-palette.png
 ```
 
+The default renderer theme is `technical`. Use the Figma-matched template when needed:
+
+```bash
+pnpm run render -- output/generated-palette.json output/generated-palette.png --theme figma
+pnpm run render:generated -- --colors 3 --seed 2026-08-13 --theme figma --json output/generated-palette.json --png output/generated-palette.png
+```
+
 Check generator determinism and color validity:
 
 ```bash

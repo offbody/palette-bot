@@ -1,12 +1,16 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { generatePalette } from "../generator/generatePalette.js"
-import { renderPalette } from "../render/renderPalette.js"
+import {
+  parseRenderPaletteTheme,
+  renderPalette,
+} from "../render/renderPalette.js"
 
 const args = parseArgs(process.argv.slice(2))
 const colorCount = Number.parseInt(args.colors ?? "5", 10)
 const jsonPath = path.resolve(args.json ?? "output/generated-palette.json")
 const pngPath = path.resolve(args.png ?? "output/generated-palette.png")
+const theme = args.theme ? parseRenderPaletteTheme(args.theme) : undefined
 
 const palette = generatePalette({
   colorCount,
@@ -16,7 +20,7 @@ const palette = generatePalette({
 
 await mkdir(path.dirname(jsonPath), { recursive: true })
 await writeFile(jsonPath, `${JSON.stringify(palette, null, 2)}\n`, "utf8")
-await renderPalette(palette, { outputPath: pngPath })
+await renderPalette(palette, { outputPath: pngPath, theme })
 
 console.log(`Generated ${path.relative(process.cwd(), jsonPath)}`)
 console.log(`Rendered ${path.relative(process.cwd(), pngPath)}`)
