@@ -1,6 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { generatePalette } from "../generator/generatePalette.js"
+import {
+  generatePalette,
+  parsePaletteHarmony,
+  parsePalettePreset,
+} from "../generator/generatePalette.js"
 import {
   parseRenderPaletteTheme,
   renderPalette,
@@ -11,11 +15,20 @@ const colorCount = Number.parseInt(args.colors ?? "5", 10)
 const jsonPath = path.resolve(args.json ?? "output/generated-palette.json")
 const pngPath = path.resolve(args.png ?? "output/generated-palette.png")
 const theme = args.theme ? parseRenderPaletteTheme(args.theme) : undefined
+const preset = args.preset ? parsePalettePreset(args.preset) : undefined
+const harmony = args.harmony ? parsePaletteHarmony(args.harmony) : undefined
+const candidates = args.candidates
+  ? Number.parseInt(args.candidates, 10)
+  : undefined
 
 const palette = generatePalette({
   colorCount,
   seed: args.seed,
   paletteName: args.name,
+  preset,
+  harmony,
+  candidates,
+  generatedAt: args["generated-at"],
 })
 
 await mkdir(path.dirname(jsonPath), { recursive: true })

@@ -1,4 +1,8 @@
-import { generatePalette } from "../generator/generatePalette.js"
+import {
+  generatePalette,
+  paletteHarmonies,
+  palettePresets,
+} from "../generator/generatePalette.js"
 
 const hexPattern = /^#[0-9A-F]{6}$/
 
@@ -22,6 +26,7 @@ for (let colorCount = 2; colorCount <= 7; colorCount += 1) {
     )
   }
 
+  assertMetadata(firstPalette, colorCount)
   const colorNames = new Set<string>()
 
   for (const color of firstPalette.colors) {
@@ -41,4 +46,63 @@ for (let colorCount = 2; colorCount <= 7; colorCount += 1) {
   }
 
   console.log(`${colorCount} colors: ${firstPalette.paletteName}`)
+}
+
+for (const preset of palettePresets) {
+  const palette = generatePalette({
+    colorCount: 5,
+    seed: `ci-${preset}`,
+    preset,
+    candidates: 8,
+  })
+
+  assertMetadata(palette, 5)
+
+  if (palette.metadata?.preset !== preset) {
+    throw new Error(`Expected preset ${preset}; received ${palette.metadata?.preset}.`)
+  }
+
+  console.log(`${preset}: score ${palette.metadata.score}`)
+}
+
+for (const harmony of paletteHarmonies) {
+  const palette = generatePalette({
+    colorCount: 5,
+    seed: `ci-${harmony}`,
+    harmony,
+    candidates: 8,
+  })
+
+  assertMetadata(palette, 5)
+
+  if (palette.metadata?.harmony !== harmony) {
+    throw new Error(
+      `Expected harmony ${harmony}; received ${palette.metadata?.harmony}.`,
+    )
+  }
+
+  console.log(`${harmony}: score ${palette.metadata.score}`)
+}
+
+function assertMetadata(
+  palette: ReturnType<typeof generatePalette>,
+  colorCount: number,
+) {
+  if (!palette.metadata) {
+    throw new Error("Generated palette metadata is missing.")
+  }
+
+  if (palette.metadata.colorCount !== colorCount) {
+    throw new Error(
+      `Metadata color count ${palette.metadata.colorCount}; expected ${colorCount}.`,
+    )
+  }
+
+  if (palette.metadata.score < 1 || palette.metadata.score > 100) {
+    throw new Error(`Generated invalid score: ${palette.metadata.score}`)
+  }
+
+  if (palette.metadata.selectedCandidate > palette.metadata.candidateCount) {
+    throw new Error("Selected candidate exceeds candidate count.")
+  }
 }

@@ -36,6 +36,12 @@ Generate a deterministic palette JSON:
 pnpm run generate -- --colors 5 --seed 2026-08-13 --output output/generated-palette.json
 ```
 
+Choose a preset, harmony mode, and candidate batch size:
+
+```bash
+pnpm run generate -- --colors 5 --seed 2026-08-13 --preset brand-vivid --harmony triadic --candidates 32 --output output/generated-palette.json
+```
+
 Render the generated palette:
 
 ```bash
@@ -47,6 +53,27 @@ Generate and render in one command:
 ```bash
 pnpm run render:generated -- --colors 7 --seed 2026-08-13 --json output/generated-palette.json --png output/generated-palette.png
 ```
+
+Available presets:
+
+- `ui-soft`
+- `editorial-bold`
+- `minimal-neutral`
+- `brand-vivid`
+- `dark-interface`
+
+Available harmony modes:
+
+- `analogous`
+- `complementary`
+- `triadic`
+- `monochrome`
+- `warm`
+- `cool`
+- `muted`
+- `vivid`
+
+The generator creates a batch of candidates, scores them for contrast, separation, harmony, lightness, and usability, then keeps the strongest result.
 
 The default renderer theme is `technical`. Use the Figma-matched template when needed:
 
@@ -75,6 +102,23 @@ Palette JSON format:
       "name": "Ink",
       "hex": "#202329"
     }
-  ]
+  ],
+  "metadata": {
+    "seed": "2026-08-13",
+    "generatedAt": "2026-08-13T00:00:00.000Z",
+    "colorCount": 2,
+    "preset": "ui-soft",
+    "harmony": "analogous",
+    "candidateCount": 24,
+    "selectedCandidate": 7,
+    "score": 84,
+    "scoreBreakdown": {
+      "contrast": 93,
+      "separation": 82,
+      "harmony": 79,
+      "lightness": 88,
+      "usability": 100
+    }
+  }
 }
 ```

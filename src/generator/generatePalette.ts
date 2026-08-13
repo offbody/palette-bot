@@ -1,8 +1,36 @@
 import { clampRgb, formatHex } from "culori"
-import type { Palette, PaletteColor } from "../types.js"
+import type {
+  Palette,
+  PaletteColor,
+  PaletteHarmony,
+  PalettePreset,
+  PaletteScoreBreakdown,
+} from "../types.js"
 
 const MIN_COLORS = 2
 const MAX_COLORS = 7
+const DEFAULT_PRESET: PalettePreset = "ui-soft"
+const DEFAULT_CANDIDATE_COUNT = 24
+const MAX_CANDIDATE_COUNT = 96
+
+export const palettePresets = [
+  "ui-soft",
+  "editorial-bold",
+  "minimal-neutral",
+  "brand-vivid",
+  "dark-interface",
+] as const satisfies readonly PalettePreset[]
+
+export const paletteHarmonies = [
+  "analogous",
+  "complementary",
+  "triadic",
+  "monochrome",
+  "warm",
+  "cool",
+  "muted",
+  "vivid",
+] as const satisfies readonly PaletteHarmony[]
 
 const paletteAdjectives = [
   "Quiet",
@@ -13,6 +41,8 @@ const paletteAdjectives = [
   "Signal",
   "Drift",
   "Cinder",
+  "Prism",
+  "Studio",
 ]
 
 const paletteNouns = [
@@ -24,6 +54,8 @@ const paletteNouns = [
   "Archive",
   "Interval",
   "Weather",
+  "System",
+  "Spectrum",
 ]
 
 const lightNames = ["Porcelain", "Linen", "Chalk", "Parchment", "Pearl"]
@@ -31,10 +63,62 @@ const midNames = ["Sage", "Clay", "Moss", "Ochre", "Dust", "Cedar"]
 const vividNames = ["Yuzu", "Coral", "Berry", "Azure", "Vermilion", "Iris"]
 const darkNames = ["Ink", "Graphite", "Night", "Carbon", "Pine"]
 
+type PresetConfig = {
+  harmonies: readonly PaletteHarmony[]
+  lightness: readonly number[]
+  chroma: {
+    low: number
+    mid: number
+    high: number
+  }
+  jitter: {
+    hue: number
+    lightness: number
+    chroma: number
+  }
+}
+
+const presetConfigs = {
+  "ui-soft": {
+    harmonies: ["analogous", "complementary", "cool", "muted"],
+    lightness: [0.94, 0.84, 0.72, 0.61, 0.5, 0.39, 0.29],
+    chroma: { low: 0.035, mid: 0.09, high: 0.13 },
+    jitter: { hue: 6, lightness: 0.025, chroma: 0.012 },
+  },
+  "editorial-bold": {
+    harmonies: ["complementary", "triadic", "warm", "vivid"],
+    lightness: [0.93, 0.8, 0.67, 0.55, 0.44, 0.33, 0.23],
+    chroma: { low: 0.055, mid: 0.13, high: 0.19 },
+    jitter: { hue: 8, lightness: 0.03, chroma: 0.016 },
+  },
+  "minimal-neutral": {
+    harmonies: ["monochrome", "muted", "analogous", "cool"],
+    lightness: [0.95, 0.86, 0.75, 0.63, 0.5, 0.37, 0.25],
+    chroma: { low: 0.018, mid: 0.045, high: 0.07 },
+    jitter: { hue: 4, lightness: 0.018, chroma: 0.008 },
+  },
+  "brand-vivid": {
+    harmonies: ["triadic", "complementary", "vivid", "warm"],
+    lightness: [0.92, 0.78, 0.66, 0.54, 0.43, 0.32, 0.22],
+    chroma: { low: 0.065, mid: 0.15, high: 0.22 },
+    jitter: { hue: 9, lightness: 0.03, chroma: 0.02 },
+  },
+  "dark-interface": {
+    harmonies: ["cool", "analogous", "muted", "complementary"],
+    lightness: [0.82, 0.69, 0.56, 0.44, 0.33, 0.24, 0.16],
+    chroma: { low: 0.03, mid: 0.085, high: 0.14 },
+    jitter: { hue: 5, lightness: 0.02, chroma: 0.012 },
+  },
+} as const satisfies Record<PalettePreset, PresetConfig>
+
 export type GeneratePaletteOptions = {
   colorCount: number
   seed?: string
   paletteName?: string
+  preset?: PalettePreset
+  harmony?: PaletteHarmony
+  candidates?: number
+  generatedAt?: string
 }
 
 type OklchColor = {
@@ -43,26 +127,112 @@ type OklchColor = {
   h: number
 }
 
+type Candidate = {
+  index: number
+  harmony: PaletteHarmony
+  colors: OklchColor[]
+  hexColors: string[]
+  score: number
+  scoreBreakdown: PaletteScoreBreakdown
+}
+
 export function generatePalette(options: GeneratePaletteOptions): Palette {
   validateColorCount(options.colorCount)
 
   const seed = options.seed ?? new Date().toISOString().slice(0, 10)
-  const random = createRandom(`${seed}:${options.colorCount}`)
-  const baseHue = Math.round(random() * 360)
-  const profile = pick(
-    ["analogous", "split", "triad", "arc"] as const,
-    random,
+  const preset = options.preset ?? DEFAULT_PRESET
+  const candidateCount = normalizeCandidateCount(options.candidates)
+  const bestCandidate = selectBestCandidate({
+    colorCount: options.colorCount,
+    seed,
+    preset,
+    harmony: options.harmony,
+    candidateCount,
+  })
+  const random = createRandom(
+    `${seed}:${preset}:${bestCandidate.harmony}:${bestCandidate.index}:name`,
   )
-  const colors = buildOklchRamp(options.colorCount, baseHue, profile, random)
-
   const usedNames = new Set<string>()
 
   return {
     paletteName: options.paletteName ?? createPaletteName(random),
-    colors: colors.map((color, index) =>
-      createPaletteColor(color, index, usedNames),
+    colors: bestCandidate.colors.map((color, index) =>
+      createPaletteColor(color, bestCandidate.hexColors[index]!, index, usedNames),
     ),
+    metadata: {
+      seed,
+      generatedAt: options.generatedAt ?? createStableTimestamp(seed),
+      colorCount: options.colorCount,
+      preset,
+      harmony: bestCandidate.harmony,
+      candidateCount,
+      selectedCandidate: bestCandidate.index + 1,
+      score: bestCandidate.score,
+      scoreBreakdown: bestCandidate.scoreBreakdown,
+    },
   }
+}
+
+export function parsePalettePreset(value: string): PalettePreset {
+  if (palettePresets.includes(value as PalettePreset)) {
+    return value as PalettePreset
+  }
+
+  throw new Error(`Unknown palette preset: ${value}`)
+}
+
+export function parsePaletteHarmony(value: string): PaletteHarmony {
+  if (paletteHarmonies.includes(value as PaletteHarmony)) {
+    return value as PaletteHarmony
+  }
+
+  throw new Error(`Unknown palette harmony: ${value}`)
+}
+
+function selectBestCandidate(options: {
+  colorCount: number
+  seed: string
+  preset: PalettePreset
+  harmony?: PaletteHarmony
+  candidateCount: number
+}) {
+  let bestCandidate: Candidate | undefined
+
+  for (let index = 0; index < options.candidateCount; index += 1) {
+    const random = createRandom(
+      `${options.seed}:${options.preset}:${options.colorCount}:${index}`,
+    )
+    const harmony =
+      options.harmony ?? pick(presetConfigs[options.preset].harmonies, random)
+    const colors = buildOklchRamp(
+      options.colorCount,
+      createBaseHue(harmony, random),
+      options.preset,
+      harmony,
+      random,
+    )
+    const hexColors = colors.map(toHex)
+    const scoreBreakdown = scorePalette(colors, hexColors, harmony)
+    const score = weightedScore(scoreBreakdown)
+    const candidate = {
+      index,
+      harmony,
+      colors,
+      hexColors,
+      score,
+      scoreBreakdown,
+    }
+
+    if (!bestCandidate || candidate.score > bestCandidate.score) {
+      bestCandidate = candidate
+    }
+  }
+
+  if (!bestCandidate) {
+    throw new Error("Could not generate a palette candidate.")
+  }
+
+  return bestCandidate
 }
 
 function validateColorCount(colorCount: number) {
@@ -77,82 +247,271 @@ function validateColorCount(colorCount: number) {
   }
 }
 
+function normalizeCandidateCount(candidateCount?: number) {
+  if (candidateCount === undefined) {
+    return DEFAULT_CANDIDATE_COUNT
+  }
+
+  if (!Number.isInteger(candidateCount)) {
+    throw new Error("Candidate count must be an integer.")
+  }
+
+  return clamp(candidateCount, 1, MAX_CANDIDATE_COUNT)
+}
+
 function buildOklchRamp(
   colorCount: number,
   baseHue: number,
-  profile: "analogous" | "split" | "triad" | "arc",
+  preset: PalettePreset,
+  harmony: PaletteHarmony,
   random: () => number,
 ) {
-  const offsets = createHueOffsets(colorCount, profile)
-  const lightness = createLightnessRamp(colorCount)
-  const chroma = createChromaRamp(colorCount, profile)
+  const config = presetConfigs[preset]
+  const offsets = createHueOffsets(colorCount, harmony)
+  const lightness = createLightnessRamp(colorCount, config, harmony)
+  const chroma = createChromaRamp(colorCount, config, harmony)
 
   return offsets.map((offset, index) => ({
-    l: lightness[index],
-    c: chroma[index] + randomBetween(random, -0.012, 0.012),
-    h: wrapHue(baseHue + offset + randomBetween(random, -6, 6)),
+    l: clamp(
+      lightness[index]! + randomBetween(random, -config.jitter.lightness, config.jitter.lightness),
+      0.14,
+      0.96,
+    ),
+    c: clamp(
+      chroma[index]! + randomBetween(random, -config.jitter.chroma, config.jitter.chroma),
+      0.012,
+      0.24,
+    ),
+    h: wrapHue(baseHue + offset + randomBetween(random, -config.jitter.hue, config.jitter.hue)),
   }))
 }
 
-function createHueOffsets(
-  colorCount: number,
-  profile: "analogous" | "split" | "triad" | "arc",
-) {
-  if (profile === "split") {
-    const splitOffsets = [-34, 0, 34, 150, 184, 218, 252]
-    return splitOffsets.slice(0, colorCount)
+function createBaseHue(harmony: PaletteHarmony, random: () => number) {
+  if (harmony === "warm") {
+    return random() > 0.32
+      ? randomBetween(random, 12, 76)
+      : randomBetween(random, 326, 358)
   }
 
-  if (profile === "triad") {
-    const triadOffsets = [0, 120, 240, 24, 144, 264, 312]
-    return triadOffsets.slice(0, colorCount)
+  if (harmony === "cool") {
+    return randomBetween(random, 178, 266)
   }
 
-  const spread = profile === "arc" ? 168 : Math.min(96, 20 * colorCount)
+  return Math.round(random() * 360)
+}
+
+function createHueOffsets(colorCount: number, harmony: PaletteHarmony) {
+  if (harmony === "complementary") {
+    return balancedOffsets([0, 180, 24, 204, -24, 156, 228], colorCount)
+  }
+
+  if (harmony === "triadic") {
+    return balancedOffsets([0, 120, 240, 28, 148, 268, 320], colorCount)
+  }
+
+  if (harmony === "monochrome") {
+    return Array.from({ length: colorCount }, (_, index) => (index - colorCount / 2) * 3)
+  }
+
+  if (harmony === "warm" || harmony === "cool" || harmony === "muted") {
+    return createArcOffsets(colorCount, harmony === "muted" ? 54 : 78)
+  }
+
+  if (harmony === "vivid") {
+    return balancedOffsets([0, 96, 192, 288, 48, 144, 240], colorCount)
+  }
+
+  return createArcOffsets(colorCount, Math.min(96, 22 * colorCount))
+}
+
+function balancedOffsets(offsets: readonly number[], colorCount: number) {
+  return offsets.slice(0, colorCount)
+}
+
+function createArcOffsets(colorCount: number, spread: number) {
+  if (colorCount === 1) {
+    return [0]
+  }
+
   const start = -spread / 2
   const step = spread / (colorCount - 1)
 
   return Array.from({ length: colorCount }, (_, index) => start + step * index)
 }
 
-function createLightnessRamp(colorCount: number) {
-  if (colorCount === 2) {
-    return [0.92, 0.3]
+function createLightnessRamp(
+  colorCount: number,
+  config: PresetConfig,
+  harmony: PaletteHarmony,
+) {
+  const ramp = config.lightness.slice(0, colorCount)
+
+  if (harmony === "monochrome") {
+    return ramp.map((lightness, index) =>
+      clamp(lightness + (index % 2 === 0 ? 0.015 : -0.015), 0.14, 0.96),
+    )
   }
 
-  return [0.94, 0.84, 0.72, 0.61, 0.5, 0.39, 0.28].slice(0, colorCount)
+  return ramp
 }
 
 function createChromaRamp(
   colorCount: number,
-  profile: "analogous" | "split" | "triad" | "arc",
+  config: PresetConfig,
+  harmony: PaletteHarmony,
 ) {
-  const base = profile === "analogous" ? 0.08 : 0.11
-  const vividBoost = profile === "triad" || profile === "split" ? 0.035 : 0.02
+  const harmonyMultiplier = getHarmonyChromaMultiplier(harmony)
 
   return Array.from({ length: colorCount }, (_, index) => {
-    if (index === 0) return 0.035
-    if (index === colorCount - 1) return 0.055
-    return base + vividBoost * Math.sin((index / (colorCount - 1)) * Math.PI)
+    const position = colorCount === 1 ? 0 : index / (colorCount - 1)
+
+    if (index === 0) {
+      return config.chroma.low * harmonyMultiplier
+    }
+
+    if (index === colorCount - 1) {
+      return (config.chroma.low + config.chroma.mid) * 0.52 * harmonyMultiplier
+    }
+
+    const arc = Math.sin(position * Math.PI)
+    return (config.chroma.mid + (config.chroma.high - config.chroma.mid) * arc) * harmonyMultiplier
   })
+}
+
+function getHarmonyChromaMultiplier(harmony: PaletteHarmony) {
+  if (harmony === "muted" || harmony === "monochrome") return 0.62
+  if (harmony === "vivid") return 1.12
+  return 1
+}
+
+function scorePalette(
+  colors: readonly OklchColor[],
+  hexColors: readonly string[],
+  harmony: PaletteHarmony,
+): PaletteScoreBreakdown {
+  return {
+    contrast: scoreContrast(hexColors),
+    separation: scoreSeparation(colors),
+    harmony: scoreHarmony(colors, harmony),
+    lightness: scoreLightness(colors),
+    usability: scoreUsability(colors, hexColors),
+  }
+}
+
+function weightedScore(score: PaletteScoreBreakdown) {
+  return roundScore(
+    score.contrast * 0.27 +
+      score.separation * 0.22 +
+      score.harmony * 0.2 +
+      score.lightness * 0.16 +
+      score.usability * 0.15,
+  )
+}
+
+function scoreContrast(hexColors: readonly string[]) {
+  const luminance = hexColors.map(getRelativeLuminance)
+  const sorted = [...luminance].sort((a, b) => a - b)
+  const maxContrast = contrastRatio(sorted[0]!, sorted[sorted.length - 1]!)
+  const neighborContrast = sorted
+    .slice(1)
+    .map((value, index) => contrastRatio(sorted[index]!, value))
+  const averageNeighborContrast =
+    neighborContrast.reduce((sum, value) => sum + value, 0) /
+    Math.max(1, neighborContrast.length)
+
+  return roundScore(
+    clamp01((maxContrast - 3.4) / 6.2) * 72 +
+      clamp01((averageNeighborContrast - 1.18) / 1.35) * 28,
+  )
+}
+
+function scoreSeparation(colors: readonly OklchColor[]) {
+  const nearestDistances = colors.map((color, index) => {
+    const distances = colors
+      .filter((_, comparedIndex) => comparedIndex !== index)
+      .map((comparedColor) => oklchDistance(color, comparedColor))
+
+    return Math.min(...distances)
+  })
+  const averageNearest =
+    nearestDistances.reduce((sum, distance) => sum + distance, 0) /
+    nearestDistances.length
+
+  return roundScore(clamp01((averageNearest - 0.08) / 0.21) * 100)
+}
+
+function scoreHarmony(colors: readonly OklchColor[], harmony: PaletteHarmony) {
+  const hueSpan = getHueSpan(colors.map((color) => color.h))
+
+  if (harmony === "monochrome") {
+    return roundScore(100 - clamp01((hueSpan - 16) / 52) * 80)
+  }
+
+  if (harmony === "analogous" || harmony === "muted" || harmony === "warm" || harmony === "cool") {
+    return roundScore(100 - clamp01((hueSpan - 68) / 130) * 65)
+  }
+
+  if (harmony === "triadic" || harmony === "vivid") {
+    return roundScore(clamp01((hueSpan - 150) / 120) * 100)
+  }
+
+  return roundScore(clamp01((hueSpan - 112) / 96) * 100)
+}
+
+function scoreLightness(colors: readonly OklchColor[]) {
+  const lightness = colors.map((color) => color.l).sort((a, b) => a - b)
+  const span = lightness[lightness.length - 1]! - lightness[0]!
+  const deltas = lightness.slice(1).map((value, index) => value - lightness[index]!)
+  const tightestDelta = Math.min(...deltas)
+
+  return roundScore(
+    clamp01((span - 0.48) / 0.28) * 68 +
+      clamp01((tightestDelta - 0.055) / 0.08) * 32,
+  )
+}
+
+function scoreUsability(
+  colors: readonly OklchColor[],
+  hexColors: readonly string[],
+) {
+  const uniqueHexCount = new Set(hexColors).size
+  const uniqueness = uniqueHexCount / hexColors.length
+  const lowChromaDarkColors = colors.filter(
+    (color) => color.l < 0.34 && color.c < 0.035,
+  ).length
+  const overlyBrightVividColors = colors.filter(
+    (color) => color.l > 0.84 && color.c > 0.14,
+  ).length
+
+  return roundScore(
+    uniqueness * 72 -
+      lowChromaDarkColors * 8 -
+      overlyBrightVividColors * 7 +
+      28,
+  )
 }
 
 function createPaletteColor(
   color: OklchColor,
+  hex: string,
   index: number,
   usedNames: Set<string>,
 ): PaletteColor {
   return {
     name: createColorName(color, index, usedNames),
-    hex: formatHex(
-      clampRgb({
-        mode: "oklch",
-        l: clamp(color.l, 0.18, 0.96),
-        c: clamp(color.c, 0.02, 0.18),
-        h: wrapHue(color.h),
-      }),
-    ).toUpperCase(),
+    hex,
   }
+}
+
+function toHex(color: OklchColor) {
+  return formatHex(
+    clampRgb({
+      mode: "oklch",
+      l: clamp(color.l, 0.14, 0.96),
+      c: clamp(color.c, 0.012, 0.24),
+      h: wrapHue(color.h),
+    }),
+  ).toUpperCase()
 }
 
 function createColorName(
@@ -188,6 +547,18 @@ function createPaletteName(random: () => number) {
   return `${pick(paletteAdjectives, random)} ${pick(paletteNouns, random)}`
 }
 
+function createStableTimestamp(seed: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(seed)) {
+    return `${seed}T00:00:00.000Z`
+  }
+
+  const random = createRandom(`${seed}:timestamp`)
+  const dayOffset = Math.floor(random() * 730)
+  const timestamp = new Date(Date.UTC(2024, 0, 1 + dayOffset))
+
+  return timestamp.toISOString()
+}
+
 function createRandom(seed: string) {
   let state = 1779033703 ^ seed.length
 
@@ -208,18 +579,71 @@ function pick<T>(items: readonly T[], random: () => number) {
   return items[Math.floor(random() * items.length)]!
 }
 
-function pickByHue(items: readonly string[], hue: number) {
-  return items[Math.floor((wrapHue(hue) / 360) * items.length) % items.length]!
-}
-
 function randomBetween(random: () => number, min: number, max: number) {
   return min + (max - min) * random()
+}
+
+function oklchDistance(first: OklchColor, second: OklchColor) {
+  const hueDistance = Math.min(
+    Math.abs(first.h - second.h),
+    360 - Math.abs(first.h - second.h),
+  )
+
+  return (
+    Math.abs(first.l - second.l) * 1.35 +
+    Math.abs(first.c - second.c) * 1.1 +
+    (hueDistance / 360) * 0.82
+  )
+}
+
+function getHueSpan(hues: readonly number[]) {
+  const sortedHues = hues.map(wrapHue).sort((a, b) => a - b)
+  const gaps = sortedHues.map((hue, index) => {
+    const nextHue = sortedHues[(index + 1) % sortedHues.length]!
+    return wrapHue(nextHue - hue)
+  })
+  const largestGap = Math.max(...gaps)
+
+  return 360 - largestGap
+}
+
+function getRelativeLuminance(hex: string) {
+  const red = parseInt(hex.slice(1, 3), 16) / 255
+  const green = parseInt(hex.slice(3, 5), 16) / 255
+  const blue = parseInt(hex.slice(5, 7), 16) / 255
+
+  return (
+    0.2126 * linearizeRgb(red) +
+    0.7152 * linearizeRgb(green) +
+    0.0722 * linearizeRgb(blue)
+  )
+}
+
+function linearizeRgb(value: number) {
+  return value <= 0.03928
+    ? value / 12.92
+    : ((value + 0.055) / 1.055) ** 2.4
+}
+
+function contrastRatio(firstLuminance: number, secondLuminance: number) {
+  const lighter = Math.max(firstLuminance, secondLuminance)
+  const darker = Math.min(firstLuminance, secondLuminance)
+
+  return (lighter + 0.05) / (darker + 0.05)
 }
 
 function wrapHue(hue: number) {
   return ((hue % 360) + 360) % 360
 }
 
+function clamp01(value: number) {
+  return clamp(value, 0, 1)
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
+}
+
+function roundScore(score: number) {
+  return Math.round(clamp(score, 0, 100))
 }
