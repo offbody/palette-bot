@@ -5,6 +5,8 @@
   "private": true,
   "packageManager": "pnpm@11.19.0",
   "scripts": {
+    "generate": "node --import tsx src/scripts/generatePalette.ts",
+    "test:generator": "node --import tsx src/scripts/checkGenerator.ts",
     "render": "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright node --import tsx src/index.ts",
     "render:fixtures": "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright node --import tsx src/scripts/renderFixtures.ts",
     "check:fixtures": "node --import tsx src/scripts/checkRenderedFixtures.ts",
@@ -14,9 +16,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "culori": "^4.0.2",
     "playwright": "^1.54.0"
   },
   "devDependencies": {
+    "@types/culori": "^4.0.1",
     "@types/node": "^24.0.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0"

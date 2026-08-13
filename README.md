@@ -28,6 +28,26 @@ pnpm run test:render
 
 This writes PNG files to `output/fixtures/` and checks that every rendered image is exactly 1440 x 1153 px.
 
+## Step 2: OKLCH Generator
+
+Generate a deterministic palette JSON:
+
+```bash
+pnpm run generate -- --colors 5 --seed 2026-08-13 --output output/generated-palette.json
+```
+
+Render the generated palette:
+
+```bash
+pnpm run render -- output/generated-palette.json output/generated-palette.png
+```
+
+Check generator determinism and color validity:
+
+```bash
+pnpm run test:generator
+```
+
 Palette JSON format:
 
 ```json
