@@ -8,8 +8,8 @@ const messagePath = path.resolve(
 const message = await readFile(messagePath, "utf8")
 const lines = message.trimEnd().split("\n")
 
-if (lines.length < 2 || lines.length > 7) {
-  throw new Error(`Expected 2 to 7 message lines; received ${lines.length}.`)
+if (lines.length < 2 || lines.length > 5) {
+  throw new Error(`Expected 2 to 5 message lines; received ${lines.length}.`)
 }
 
 for (const line of lines) {

@@ -17,7 +17,7 @@
     "check:png": "node --import tsx src/scripts/checkPngDimensions.ts",
     "check:message": "node --import tsx src/scripts/checkPaletteMessage.ts",
     "check:fixtures": "pnpm run check:png -- output/fixtures",
-    "test:generated-render": "pnpm run render:generated -- --colors 7 --seed ci-generated --preset brand-vivid --harmony triadic --candidates 16 --json output/generated-ci.json --png output/generated-ci.png && pnpm run check:png -- output/generated-ci.png",
+    "test:generated-render": "pnpm run render:generated -- --colors 5 --seed ci-generated --preset brand-vivid --harmony triadic --candidates 16 --json output/generated-ci.json --png output/generated-ci.png && pnpm run check:png -- output/generated-ci.png",
     "test:generated-render:figma": "pnpm run render:generated -- --colors 3 --seed ci-figma --preset ui-soft --harmony analogous --theme figma --json output/generated-figma-ci.json --png output/generated-figma-ci.png && pnpm run check:png -- output/generated-figma-ci.png",
     "test:publication-preview": "pnpm run publish:preview -- --date 2026-08-13 --attempts 16 --min-score 70 --plan output/post-plan-ci.json --json output/post-palette-ci.json --png output/post-palette-ci.png --message output/post-message-ci.txt && pnpm run check:png -- output/post-palette-ci.png && pnpm run check:message -- output/post-message-ci.txt",
     "test:render": "pnpm run render:fixtures && pnpm run check:fixtures",

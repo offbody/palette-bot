@@ -1,0 +1,21 @@
+{
+  "paletteName": "Studio Current",
+  "colors": [
+    {
+      "name": "Pearl",
+      "hex": "#F4F0E8"
+    },
+    {
+      "name": "Dust",
+      "hex": "#9DB9D6"
+    },
+    {
+      "name": "Coral",
+      "hex": "#D86B54"
+    },
+    {
+      "name": "Pine",
+      "hex": "#173D42"
+    }
+  ]
+}

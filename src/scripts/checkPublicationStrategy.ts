@@ -49,7 +49,7 @@ if (colorCounts.size < 4) {
 
 const overridePlan = createPublicationPlan({
   date: "2026-08-13",
-  colorCount: 7,
+  colorCount: 5,
   preset: "brand-vivid",
   harmony: "triadic",
   candidates: 32,
@@ -57,7 +57,7 @@ const overridePlan = createPublicationPlan({
 })
 
 if (
-  overridePlan.colorCount !== 7 ||
+  overridePlan.colorCount !== 5 ||
   overridePlan.preset !== "brand-vivid" ||
   overridePlan.harmony !== "triadic" ||
   overridePlan.candidates !== 32 ||

@@ -4,7 +4,7 @@ Palette image renderer for automated color palette publishing.
 
 ## Step 1: Palette Renderer
 
-The renderer accepts a JSON palette with 2 to 7 colors and exports a PNG at exactly 1440 x 1153 px.
+The renderer accepts a JSON palette with 2 to 5 colors and exports a PNG at exactly 1440 x 1153 px.
 
 ```bash
 pnpm install
@@ -20,7 +20,7 @@ You can pass custom paths:
 pnpm run render -- data/my-palette.json output/my-palette.png
 ```
 
-Render the fixture set for 2, 3, 5, and 7 colors:
+Render the fixture set for 2, 3, 4, and 5 colors:
 
 ```bash
 pnpm run test:render
@@ -51,7 +51,7 @@ pnpm run render -- output/generated-palette.json output/generated-palette.png
 Generate and render in one command:
 
 ```bash
-pnpm run render:generated -- --colors 7 --seed 2026-08-13 --json output/generated-palette.json --png output/generated-palette.png
+pnpm run render:generated -- --colors 5 --seed 2026-08-13 --json output/generated-palette.json --png output/generated-palette.png
 ```
 
 Available presets:
@@ -102,7 +102,6 @@ Dust #A5D3FF
 Coral #BFA431
 Cedar #7A82D1
 Sage #945427
-Ochre #194762
 ```
 
 ## Step 3: Telegram Publisher
@@ -145,7 +144,7 @@ Scheduled runs use a date-based seed, so each calendar day is reproducible. Manu
 You can still override any decision:
 
 ```bash
-pnpm run publish:preview -- --date 2026-08-13 --colors 7 --preset brand-vivid --harmony triadic --candidates 32 --theme technical --min-score 70 --message output/post-message.txt
+pnpm run publish:preview -- --date 2026-08-13 --colors 5 --preset brand-vivid --harmony triadic --candidates 32 --theme technical --min-score 70 --message output/post-message.txt
 ```
 
 The default publication renderer theme is `figma`. Use the technical template when needed:

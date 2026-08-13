@@ -26,12 +26,10 @@ type WeightedOption<T> = {
 }
 
 const colorCountWeights = [
-  { value: 2, weight: 6 },
-  { value: 3, weight: 14 },
-  { value: 4, weight: 19 },
-  { value: 5, weight: 25 },
-  { value: 6, weight: 20 },
-  { value: 7, weight: 16 },
+  { value: 2, weight: 8 },
+  { value: 3, weight: 22 },
+  { value: 4, weight: 34 },
+  { value: 5, weight: 36 },
 ] as const satisfies readonly WeightedOption<number>[]
 
 const presetWeights = [
@@ -99,8 +97,8 @@ function validateDate(date: string) {
 }
 
 function validateColorCount(colorCount: number) {
-  if (!Number.isInteger(colorCount) || colorCount < 2 || colorCount > 7) {
-    throw new Error("Publication color count must be between 2 and 7.")
+  if (!Number.isInteger(colorCount) || colorCount < 2 || colorCount > 5) {
+    throw new Error("Publication color count must be between 2 and 5.")
   }
 }
 

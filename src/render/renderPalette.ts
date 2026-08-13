@@ -6,7 +6,7 @@ import type { Palette } from "../types.js"
 const CANVAS_WIDTH = 1440
 const CANVAS_HEIGHT = 1153
 const MIN_COLORS = 2
-const MAX_COLORS = 7
+const MAX_COLORS = 5
 const FIGMA_PALETTE_WIDTH = 1008
 const FIGMA_PALETTE_GAP = 24
 

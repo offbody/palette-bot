@@ -8,7 +8,7 @@ import type {
 } from "../types.js"
 
 const MIN_COLORS = 2
-const MAX_COLORS = 7
+const MAX_COLORS = 5
 const DEFAULT_PRESET: PalettePreset = "ui-soft"
 const DEFAULT_CANDIDATE_COUNT = 24
 const MAX_CANDIDATE_COUNT = 96
