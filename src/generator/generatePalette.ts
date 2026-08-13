@@ -7,7 +7,7 @@ import type {
   PaletteScoreBreakdown,
 } from "../types.js"
 
-const MIN_COLORS = 2
+const MIN_COLORS = 1
 const MAX_COLORS = 5
 const DEFAULT_PRESET: PalettePreset = "ui-soft"
 const DEFAULT_CANDIDATE_COUNT = 24
@@ -415,6 +415,10 @@ function weightedScore(score: PaletteScoreBreakdown) {
 }
 
 function scoreContrast(hexColors: readonly string[]) {
+  if (hexColors.length < 2) {
+    return 100
+  }
+
   const luminance = hexColors.map(getRelativeLuminance)
   const sorted = [...luminance].sort((a, b) => a - b)
   const maxContrast = contrastRatio(sorted[0]!, sorted[sorted.length - 1]!)
@@ -432,6 +436,10 @@ function scoreContrast(hexColors: readonly string[]) {
 }
 
 function scoreSeparation(colors: readonly OklchColor[]) {
+  if (colors.length < 2) {
+    return 100
+  }
+
   const nearestDistances = colors.map((color, index) => {
     const distances = colors
       .filter((_, comparedIndex) => comparedIndex !== index)
@@ -447,6 +455,10 @@ function scoreSeparation(colors: readonly OklchColor[]) {
 }
 
 function scoreHarmony(colors: readonly OklchColor[], harmony: PaletteHarmony) {
+  if (colors.length < 2) {
+    return 100
+  }
+
   const hueSpan = getHueSpan(colors.map((color) => color.h))
 
   if (harmony === "monochrome") {
@@ -465,6 +477,10 @@ function scoreHarmony(colors: readonly OklchColor[], harmony: PaletteHarmony) {
 }
 
 function scoreLightness(colors: readonly OklchColor[]) {
+  if (colors.length < 2) {
+    return 100
+  }
+
   const lightness = colors.map((color) => color.l).sort((a, b) => a - b)
   const span = lightness[lightness.length - 1]! - lightness[0]!
   const deltas = lightness.slice(1).map((value, index) => value - lightness[index]!)

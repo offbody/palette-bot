@@ -5,7 +5,7 @@ import type { Palette } from "../types.js"
 
 const CANVAS_WIDTH = 1440
 const CANVAS_HEIGHT = 1153
-const MIN_COLORS = 2
+const MIN_COLORS = 1
 const MAX_COLORS = 5
 const FIGMA_PALETTE_WIDTH = 1008
 const FIGMA_PALETTE_GAP = 24
@@ -239,7 +239,7 @@ async function createTechnicalPaletteHtml(palette: Palette) {
           <div class="eyebrow">Color Palette</div>
           <h1>${escapeHtml(palette.paletteName)}</h1>
         </div>
-        <div class="count">${palette.colors.length} colors</div>
+        <div class="count">${formatColorCount(palette.colors.length)}</div>
       </header>
 
       <div class="palette">
@@ -450,6 +450,10 @@ function getRelativeLuminance(hex: string) {
   const blue = Number.parseInt(normalized.slice(4, 6), 16)
 
   return (0.299 * red + 0.587 * green + 0.114 * blue) / 255
+}
+
+function formatColorCount(colorCount: number) {
+  return `${colorCount} ${colorCount === 1 ? "color" : "colors"}`
 }
 
 export function parseRenderPaletteTheme(value: string): RenderPaletteTheme {

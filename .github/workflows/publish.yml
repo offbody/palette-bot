@@ -24,6 +24,18 @@ on:
         required: true
         default: "70"
         type: string
+      color_count:
+        description: Number of colors. Use auto for deterministic selection.
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
       preset:
         description: Palette preset. Use auto for deterministic selection.
         required: true
@@ -96,6 +108,7 @@ jobs:
             echo "dry_run=false" >> "$GITHUB_OUTPUT"
             echo "attempts=16" >> "$GITHUB_OUTPUT"
             echo "min_score=70" >> "$GITHUB_OUTPUT"
+            echo "color_count=auto" >> "$GITHUB_OUTPUT"
             echo "preset=auto" >> "$GITHUB_OUTPUT"
             echo "harmony=auto" >> "$GITHUB_OUTPUT"
             echo "seed=post:${publication_date}" >> "$GITHUB_OUTPUT"
@@ -103,6 +116,7 @@ jobs:
             echo "dry_run=${{ inputs.dry_run }}" >> "$GITHUB_OUTPUT"
             echo "attempts=${{ inputs.attempts }}" >> "$GITHUB_OUTPUT"
             echo "min_score=${{ inputs.min_score }}" >> "$GITHUB_OUTPUT"
+            echo "color_count=${{ inputs.color_count }}" >> "$GITHUB_OUTPUT"
             echo "preset=${{ inputs.preset }}" >> "$GITHUB_OUTPUT"
             echo "harmony=${{ inputs.harmony }}" >> "$GITHUB_OUTPUT"
             echo "seed=manual:${publication_date}:${{ github.run_id }}:${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
@@ -130,6 +144,10 @@ jobs:
 
           if [ "${{ steps.publication.outputs.preset }}" != "auto" ]; then
             args+=(--preset "${{ steps.publication.outputs.preset }}")
+          fi
+
+          if [ "${{ steps.publication.outputs.color_count }}" != "auto" ]; then
+            args+=(--colors "${{ steps.publication.outputs.color_count }}")
           fi
 
           if [ "${{ steps.publication.outputs.harmony }}" != "auto" ]; then

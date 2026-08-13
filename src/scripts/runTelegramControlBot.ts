@@ -15,9 +15,12 @@ type PublishDraft = {
   dryRun: boolean
   attempts: number
   minScore: number
+  colorCount: ColorCountChoice
   preset: PresetChoice
   harmony: HarmonyChoice
 }
+
+type ColorCountChoice = "auto" | "1" | "2" | "3" | "4" | "5"
 
 type PresetChoice =
   | "auto"
@@ -95,6 +98,15 @@ const harmonyChoices = [
   "muted",
   "vivid",
 ] as const satisfies readonly HarmonyChoice[]
+
+const colorCountChoices = [
+  "auto",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+] as const satisfies readonly ColorCountChoice[]
 
 const args = parseArgs(process.argv.slice(2))
 const envPath = path.resolve(args.env ?? ".secrets/control.env")
@@ -231,6 +243,11 @@ async function applyAction(
     return
   }
 
+  if (data.startsWith("color_count:")) {
+    draft.colorCount = parseColorCountChoice(data.slice("color_count:".length))
+    return
+  }
+
   if (data.startsWith("harmony:")) {
     draft.harmony = parseHarmonyChoice(data.slice("harmony:".length))
     return
@@ -246,6 +263,7 @@ async function applyAction(
         dry_run: String(draft.dryRun),
         attempts: String(draft.attempts),
         min_score: String(draft.minScore),
+        color_count: draft.colorCount,
         preset: draft.preset,
         harmony: draft.harmony,
       },
@@ -289,6 +307,7 @@ function renderDraft(draft: PublishDraft) {
     `dry_run: ${draft.dryRun}`,
     `attempts: ${draft.attempts}`,
     `min_score: ${draft.minScore}`,
+    `color_count: ${draft.colorCount}`,
     `preset: ${draft.preset}`,
     `harmony: ${draft.harmony}`,
     "",
@@ -315,6 +334,13 @@ function createPublishKeyboard(draft: PublishDraft) {
         { text: `score ${draft.minScore}`, callback_data: "noop" },
         { text: "+ score", callback_data: "min_score:+" },
       ],
+      ...chunk(
+        colorCountChoices.map((colorCount) => ({
+          text: colorCount === draft.colorCount ? `* ${colorCount}` : colorCount,
+          callback_data: `color_count:${colorCount}`,
+        })),
+        3,
+      ),
       ...chunk(
         presetChoices.map((preset) => ({
           text: preset === draft.preset ? `* ${preset}` : preset,
@@ -345,6 +371,7 @@ function getDraft(drafts: Map<number, PublishDraft>, userId: number) {
     dryRun: true,
     attempts: 16,
     minScore: 70,
+    colorCount: "auto",
     preset: "auto",
     harmony: "auto",
   } satisfies PublishDraft
@@ -525,6 +552,14 @@ function parsePresetChoice(value: string): PresetChoice {
   }
 
   throw new Error(`Unknown preset: ${value}`)
+}
+
+function parseColorCountChoice(value: string): ColorCountChoice {
+  if (colorCountChoices.includes(value as ColorCountChoice)) {
+    return value as ColorCountChoice
+  }
+
+  throw new Error(`Unknown color count: ${value}`)
 }
 
 function parseHarmonyChoice(value: string): HarmonyChoice {

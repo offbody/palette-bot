@@ -4,7 +4,7 @@ Palette image renderer for automated color palette publishing.
 
 ## Step 1: Palette Renderer
 
-The renderer accepts a JSON palette with 2 to 5 colors and exports a PNG at exactly 1440 x 1153 px.
+The renderer accepts a JSON palette with 1 to 5 colors and exports a PNG at exactly 1440 x 1153 px.
 
 ```bash
 pnpm install
@@ -20,7 +20,7 @@ You can pass custom paths:
 pnpm run render -- data/my-palette.json output/my-palette.png
 ```
 
-Render the fixture set for 2, 3, 4, and 5 colors:
+Render the fixture set for 1, 2, 3, 4, and 5 colors:
 
 ```bash
 pnpm run test:render
@@ -135,12 +135,14 @@ Manual GitHub Actions publishing:
 1. Open the `Publish` workflow in GitHub Actions.
 2. Click `Run workflow`.
 3. Keep `dry_run` enabled for the first check.
-4. Keep `preset` and `harmony` set to `auto` for deterministic selection, or choose both manually from the dropdowns.
+4. Keep `color_count`, `preset`, and `harmony` set to `auto` for deterministic selection, or choose values manually from the dropdowns.
 5. Disable `dry_run` only when you want to publish to the Telegram channel.
 
 Scheduled GitHub Actions publishing runs daily at 09:00 UTC. It applies a deterministic 0 to 70 minute delay before publishing, so posts land between 13:00 and 14:10 in the Europe/Samara timezone. Manual runs do not wait.
 
 Scheduled runs use a date-based seed, so each calendar day is reproducible. Manual runs use a run-based seed, so repeated manual publishes on the same day produce different palettes.
+
+`color_count=auto` uses the publication strategy range of 2 to 5 colors. Choose `1` manually when you want a single-color post.
 
 You can still override any decision:
 
@@ -177,7 +179,7 @@ Run the local control bot:
 pnpm run telegram:control -- --env .secrets/control.env
 ```
 
-Then send `/publish` to the bot. The inline keyboard can adjust `dry_run`, `attempts`, `min_score`, `preset`, and `harmony`, then run the same GitHub Actions `Publish` workflow.
+Then send `/publish` to the bot. The inline keyboard can adjust `dry_run`, `attempts`, `min_score`, `color_count`, `preset`, and `harmony`, then run the same GitHub Actions `Publish` workflow.
 
 Check generator determinism and color validity:
 

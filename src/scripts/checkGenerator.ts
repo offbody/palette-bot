@@ -6,7 +6,7 @@ import {
 
 const hexPattern = /^#[0-9A-F]{6}$/
 
-for (let colorCount = 2; colorCount <= 5; colorCount += 1) {
+for (let colorCount = 1; colorCount <= 5; colorCount += 1) {
   const firstPalette = generatePalette({
     colorCount,
     seed: "ci-smoke",

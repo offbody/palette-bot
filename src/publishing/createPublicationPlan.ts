@@ -97,8 +97,8 @@ function validateDate(date: string) {
 }
 
 function validateColorCount(colorCount: number) {
-  if (!Number.isInteger(colorCount) || colorCount < 2 || colorCount > 5) {
-    throw new Error("Publication color count must be between 2 and 5.")
+  if (!Number.isInteger(colorCount) || colorCount < 1 || colorCount > 5) {
+    throw new Error("Publication color count must be between 1 and 5.")
   }
 }
 
