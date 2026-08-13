@@ -9,6 +9,11 @@ const MIN_COLORS = 2
 const MAX_COLORS = 5
 const FIGMA_PALETTE_WIDTH = 1008
 const FIGMA_PALETTE_GAP = 24
+const INTER_FONT_PATH = path.resolve(
+  "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+)
+
+let interFontFaceCss: string | undefined
 
 export type RenderPaletteTheme = "technical" | "figma"
 
@@ -38,6 +43,7 @@ export async function renderPalette(
     await page.setContent(await createPaletteHtml(palette, options.theme), {
       waitUntil: "networkidle",
     })
+    await page.evaluate(() => document.fonts.ready)
     await page.screenshot({
       path: options.outputPath,
       type: "png",
@@ -89,8 +95,8 @@ async function createPaletteHtml(
   return createTechnicalPaletteHtml(palette)
 }
 
-function createTechnicalPaletteHtml(palette: Palette) {
-  const isDensePalette = palette.colors.length >= 6
+async function createTechnicalPaletteHtml(palette: Palette) {
+  const fontFaceCss = await readInterFontFaceCss()
   const columns = palette.colors
     .map((color, index) => {
       const textColor = getTechnicalTextColor(color.hex)
@@ -109,6 +115,8 @@ function createTechnicalPaletteHtml(palette: Palette) {
 
   return createHtmlDocument(`
     <style>
+      ${fontFaceCss}
+
       * {
         box-sizing: border-box;
       }
@@ -119,7 +127,7 @@ function createTechnicalPaletteHtml(palette: Palette) {
         margin: 0;
         background: #f2eee6;
         color: #171717;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
       .canvas {
@@ -174,7 +182,7 @@ function createTechnicalPaletteHtml(palette: Palette) {
 
       .swatch {
         min-width: 0;
-        padding: ${isDensePalette ? "24px" : "28px"};
+        padding: 28px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -197,7 +205,7 @@ function createTechnicalPaletteHtml(palette: Palette) {
 
       .colorName {
         margin-bottom: 12px;
-        font-size: ${isDensePalette ? "24px" : palette.colors.length <= 4 ? "38px" : "30px"};
+        font-size: ${palette.colors.length <= 4 ? "38px" : "30px"};
         line-height: 1;
         font-weight: 700;
         overflow-wrap: anywhere;
@@ -248,14 +256,14 @@ function createTechnicalPaletteHtml(palette: Palette) {
 }
 
 async function createFigmaPaletteHtml(palette: Palette) {
-  const isDensePalette = palette.colors.length >= 6
+  const fontFaceCss = await readInterFontFaceCss()
   const logoDataUri = await readLogoDataUri()
   const colorItemWidth =
     (FIGMA_PALETTE_WIDTH - FIGMA_PALETTE_GAP * (palette.colors.length - 1)) /
     palette.colors.length
   const radius = Math.min(91, Math.round(colorItemWidth * 0.285))
-  const colorNameSize = palette.colors.length <= 3 ? 24 : isDensePalette ? 18 : 22
-  const colorCodeSize = palette.colors.length <= 3 ? 24 : isDensePalette ? 18 : 20
+  const colorNameSize = palette.colors.length <= 3 ? 24 : 22
+  const colorCodeSize = palette.colors.length <= 3 ? 24 : 20
   const columns = palette.colors
     .map(
       (color) => `
@@ -274,6 +282,8 @@ async function createFigmaPaletteHtml(palette: Palette) {
 
   return createHtmlDocument(`
     <style>
+      ${fontFaceCss}
+
       * {
         box-sizing: border-box;
       }
@@ -284,7 +294,7 @@ async function createFigmaPaletteHtml(palette: Palette) {
         margin: 0;
         background: #ffffff;
         color: #474f7a;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
       .canvas {
@@ -348,13 +358,14 @@ async function createFigmaPaletteHtml(palette: Palette) {
         line-height: normal;
         font-weight: 700;
         text-align: center;
-        word-break: break-word;
+        overflow-wrap: normal;
+        word-break: normal;
       }
 
       .colorItem {
         width: 100%;
         height: 593px;
-        padding: 0 ${isDensePalette ? 16 : 32}px;
+        padding: 0 24px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -403,6 +414,25 @@ function createHtmlDocument(bodyContent: string) {
 async function readLogoDataUri() {
   const logo = await readFile(path.resolve("assets/logo.svg"))
   return `data:image/svg+xml;base64,${logo.toString("base64")}`
+}
+
+async function readInterFontFaceCss() {
+  if (interFontFaceCss) {
+    return interFontFaceCss
+  }
+
+  const font = await readFile(INTER_FONT_PATH)
+  interFontFaceCss = `
+    @font-face {
+      font-family: "Inter";
+      src: url("data:font/woff2;base64,${font.toString("base64")}") format("woff2");
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: block;
+    }
+  `
+
+  return interFontFaceCss
 }
 
 function getTechnicalTextColor(hex: string) {
