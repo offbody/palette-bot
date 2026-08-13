@@ -66,6 +66,17 @@ if (
   throw new Error("Publication strategy overrides were not applied.")
 }
 
+const harmonyOnlyPlan = createPublicationPlan({
+  date: "2026-08-13",
+  harmony: "warm",
+})
+
+if (!getPaletteHarmoniesForPreset(harmonyOnlyPlan.preset).includes("warm")) {
+  throw new Error(
+    `Harmony-only override chose incompatible preset ${harmonyOnlyPlan.preset}.`,
+  )
+}
+
 console.log(
   `Publication strategy: ${presets.size} presets, ${harmonies.size} harmonies, ${colorCounts.size} color counts.`,
 )

@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
+import { getPaletteHarmoniesForPreset } from "../generator/generatePalette.js"
 import { dispatchWorkflow } from "../github/githubActionsClient.js"
+import type { PaletteHarmony, PalettePreset } from "../types.js"
 
 type ControlBotConfig = {
   botToken: string
@@ -29,24 +31,9 @@ type ActionResult = {
 
 type ColorCountChoice = "auto" | "1" | "2" | "3" | "4" | "5"
 
-type PresetChoice =
-  | "auto"
-  | "ui-soft"
-  | "editorial-bold"
-  | "minimal-neutral"
-  | "brand-vivid"
-  | "dark-interface"
+type PresetChoice = "auto" | PalettePreset
 
-type HarmonyChoice =
-  | "auto"
-  | "analogous"
-  | "complementary"
-  | "triadic"
-  | "monochrome"
-  | "warm"
-  | "cool"
-  | "muted"
-  | "vivid"
+type HarmonyChoice = "auto" | PaletteHarmony
 
 type TelegramUpdate = {
   update_id: number
@@ -260,7 +247,17 @@ async function applyAction(
   }
 
   if (data.startsWith("preset:")) {
-    draft.preset = parsePresetChoice(data.slice("preset:".length))
+    const preset = parsePresetChoice(data.slice("preset:".length))
+    draft.preset = preset
+
+    if (!isPresetHarmonyCompatible(preset, draft.harmony)) {
+      draft.harmony = "auto"
+      return {
+        notice: "Harmony reset to auto.",
+        view: "preset",
+      }
+    }
+
     return { view: "preset" }
   }
 
@@ -270,11 +267,27 @@ async function applyAction(
   }
 
   if (data.startsWith("harmony:")) {
-    draft.harmony = parseHarmonyChoice(data.slice("harmony:".length))
+    const harmony = parseHarmonyChoice(data.slice("harmony:".length))
+
+    if (!isPresetHarmonyCompatible(draft.preset, harmony)) {
+      return {
+        notice: `${harmony} is not supported for ${draft.preset}.`,
+        view: "harmony",
+      }
+    }
+
+    draft.harmony = harmony
     return { view: "harmony" }
   }
 
   if (data === "run") {
+    if (!isPresetHarmonyCompatible(draft.preset, draft.harmony)) {
+      return {
+        notice: "Choose a compatible preset and harmony first.",
+        view: "harmony",
+      }
+    }
+
     await dispatchWorkflow({
       token: config.githubToken,
       repository: config.githubRepository,
@@ -371,7 +384,9 @@ function renderDraft(draft: PublishDraft, view: MenuView) {
       "",
       `Current: ${draft.harmony}`,
       "",
-      "Harmony controls the relationship between colors.",
+      draft.preset === "auto"
+        ? "Harmony controls the relationship between colors."
+        : `Showing modes supported by ${draft.preset}.`,
     ].join("\n")
   }
 
@@ -442,7 +457,7 @@ function createPublishKeyboard(draft: PublishDraft, view: MenuView) {
     return {
       inline_keyboard: [
         ...chunk(
-          harmonyChoices.map((harmony) => ({
+          getHarmonyChoicesForDraft(draft).map((harmony) => ({
             text: harmony === draft.harmony ? `* ${harmony}` : harmony,
             callback_data: `harmony:${harmony}`,
           })),
@@ -703,6 +718,25 @@ function parseHarmonyChoice(value: string): HarmonyChoice {
   }
 
   throw new Error(`Unknown harmony: ${value}`)
+}
+
+function getHarmonyChoicesForDraft(draft: PublishDraft): readonly HarmonyChoice[] {
+  if (draft.preset === "auto") {
+    return harmonyChoices
+  }
+
+  return ["auto", ...getPaletteHarmoniesForPreset(draft.preset)]
+}
+
+function isPresetHarmonyCompatible(
+  preset: PresetChoice,
+  harmony: HarmonyChoice,
+) {
+  if (preset === "auto" || harmony === "auto") {
+    return true
+  }
+
+  return getPaletteHarmoniesForPreset(preset).includes(harmony)
 }
 
 function isAdmin(config: ControlBotConfig, userId?: number) {

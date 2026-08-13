@@ -66,12 +66,22 @@ export function createPublicationPlan(
   const colorCount = options.colorCount ?? pickWeighted(colorCountWeights, random)
   validateColorCount(colorCount)
 
-  const preset = options.preset
+  const requestedPreset = options.preset
     ? parsePalettePreset(options.preset)
-    : pickWeighted(presetWeights, random)
-  const harmony = options.harmony
+    : undefined
+  const requestedHarmony = options.harmony
     ? parsePaletteHarmony(options.harmony)
-    : pick(getPaletteHarmoniesForPreset(preset), random)
+    : undefined
+  const compatiblePresetWeights = requestedHarmony
+    ? presetWeights.filter((presetWeight) =>
+        getPaletteHarmoniesForPreset(presetWeight.value).includes(
+          requestedHarmony,
+        ),
+      )
+    : presetWeights
+  const preset = requestedPreset ?? pickWeighted(compatiblePresetWeights, random)
+  const harmony =
+    requestedHarmony ?? pick(getPaletteHarmoniesForPreset(preset), random)
 
   validatePresetHarmony(preset, harmony)
 
