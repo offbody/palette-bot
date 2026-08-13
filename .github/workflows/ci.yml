@@ -39,6 +39,9 @@ jobs:
       - name: Test publication strategy
         run: pnpm run test:publication-strategy
 
+      - name: Test Awwwards source parser
+        run: pnpm run test:awwwards
+
       - name: Render generated palette
         run: pnpm run test:generated-render
 

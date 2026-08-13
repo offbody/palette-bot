@@ -200,11 +200,45 @@ pnpm run telegram:control -- --env .secrets/control.env
 
 Then send `/publish` to the bot. The inline keyboard opens a compact Publish control menu with separate sections for quality, color count, preset, harmony, and scheduled settings, then runs the same GitHub Actions `Publish` workflow. Send `/schedule` to open scheduled settings directly. The scheduled settings menu saves `SCHEDULE_POSTS_PER_DAY` and `SCHEDULE_DAY_INTERVAL` to GitHub repository variables.
 
+## Step 4: Content Source Layer
+
+The Awwwards Site of the Day source layer builds a second post type without changing the base palette publication flow. It fetches the latest Awwwards SOTD case, extracts the `Color Palette` HEX values, downloads the Awwwards screenshot, renders the extracted colors with the existing Figma palette renderer, and publishes both images to Telegram as a media group.
+
+Create a local Awwwards preview:
+
+```bash
+pnpm run publish:awwwards:preview
+```
+
+This writes:
+
+- `output/awwwards-sotd-source.json`
+- `output/awwwards-sotd-screenshot.png`
+- `output/awwwards-sotd-palette.json`
+- `output/awwwards-sotd-palette.png`
+- `output/awwwards-sotd-message.txt`
+
+Test a specific Awwwards case:
+
+```bash
+pnpm run publish:awwwards:preview -- --case-url https://www.awwwards.com/sites/mosbys-files
+```
+
+Publish or dry-run the generated Awwwards media group:
+
+```bash
+pnpm run publish:telegram:dry-run -- --photos output/awwwards-sotd-screenshot.png,output/awwwards-sotd-palette.png --message output/awwwards-sotd-message.txt
+pnpm run publish:telegram -- --photos output/awwwards-sotd-screenshot.png,output/awwwards-sotd-palette.png --message output/awwwards-sotd-message.txt
+```
+
+GitHub Actions has a separate `Publish Awwwards SOTD` workflow. Manual runs default to `dry_run=true` and can optionally receive a direct Awwwards `case_url`. Scheduled runs execute daily at `08:15 UTC` with a deterministic 0 to 70 minute jitter.
+
 Check generator determinism and color validity:
 
 ```bash
 pnpm run test:generator
 pnpm run test:publication-strategy
+pnpm run test:awwwards
 ```
 
 Palette JSON format:

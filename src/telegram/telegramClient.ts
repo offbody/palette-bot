@@ -51,6 +51,44 @@ export async function sendTelegramPhoto(options: {
   )
 }
 
+export async function sendTelegramMediaGroup(options: {
+  config: TelegramConfig
+  photoPaths: string[]
+  caption: string
+}) {
+  if (options.photoPaths.length < 2 || options.photoPaths.length > 10) {
+    throw new Error("Telegram media groups must contain between 2 and 10 photos.")
+  }
+
+  const formData = new FormData()
+  const media = options.photoPaths.map((photoPath, index) => ({
+    type: "photo",
+    media: `attach://photo${index}`,
+    ...(index === 0
+      ? {
+          caption: options.caption,
+          parse_mode: "HTML",
+        }
+      : {}),
+  }))
+
+  formData.set("chat_id", options.config.chatId)
+  formData.set("media", JSON.stringify(media))
+
+  await Promise.all(
+    options.photoPaths.map(async (photoPath, index) => {
+      const photo = await readFile(photoPath)
+      formData.set(`photo${index}`, new Blob([photo]), path.basename(photoPath))
+    }),
+  )
+
+  return callTelegramApi<TelegramMessage[]>(
+    options.config,
+    "sendMediaGroup",
+    formData,
+  )
+}
+
 async function callTelegramApi<T>(
   config: TelegramConfig,
   method: string,

@@ -1,0 +1,122 @@
+name: Publish Awwwards SOTD
+
+on:
+  schedule:
+    - cron: "15 8 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Check Telegram access without publishing.
+        required: true
+        default: true
+        type: boolean
+      case_url:
+        description: Optional direct Awwwards case URL, e.g. https://www.awwwards.com/sites/example
+        required: false
+        type: string
+      listing_url:
+        description: Optional Awwwards listing URL. Defaults to Sites of the Day.
+        required: false
+        type: string
+
+jobs:
+  publish-awwwards:
+    name: Publish Awwwards SOTD
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      JITTER_MAX_MINUTES: 70
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm run playwright:install:ci
+
+      - name: Resolve publication inputs
+        id: publication
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            echo "case_url=" >> "$GITHUB_OUTPUT"
+            echo "listing_url=" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry_run=${{ inputs.dry_run }}" >> "$GITHUB_OUTPUT"
+            echo "case_url=${{ inputs.case_url }}" >> "$GITHUB_OUTPUT"
+            echo "listing_url=${{ inputs.listing_url }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply scheduled jitter
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          delay=$((0x$(date -u +%F | sha256sum | cut -c1-8) % (JITTER_MAX_MINUTES + 1)))
+          echo "Scheduled Awwwards jitter: ${delay} minutes"
+          sleep "${delay}m"
+
+      - name: Create Awwwards publication preview
+        env:
+          CASE_URL: ${{ steps.publication.outputs.case_url }}
+          LISTING_URL: ${{ steps.publication.outputs.listing_url }}
+        run: |
+          args=(
+            --source output/awwwards-sotd-source.json
+            --screenshot output/awwwards-sotd-screenshot.png
+            --palette-json output/awwwards-sotd-palette.json
+            --palette-png output/awwwards-sotd-palette.png
+            --message output/awwwards-sotd-message.txt
+            --theme figma
+          )
+
+          if [ -n "${CASE_URL}" ]; then
+            args+=(--case-url "${CASE_URL}")
+          fi
+
+          if [ -n "${LISTING_URL}" ]; then
+            args+=(--listing-url "${LISTING_URL}")
+          fi
+
+          pnpm run publish:awwwards:preview -- "${args[@]}"
+
+      - name: Check generated palette image
+        run: pnpm run check:png -- output/awwwards-sotd-palette.png
+
+      - name: Telegram dry-run
+        if: ${{ steps.publication.outputs.dry_run == 'true' }}
+        run: >
+          pnpm run publish:telegram:dry-run --
+          --photos output/awwwards-sotd-screenshot.png,output/awwwards-sotd-palette.png
+          --message output/awwwards-sotd-message.txt
+
+      - name: Publish to Telegram
+        if: ${{ steps.publication.outputs.dry_run != 'true' }}
+        run: >
+          pnpm run publish:telegram --
+          --photos output/awwwards-sotd-screenshot.png,output/awwwards-sotd-palette.png
+          --message output/awwwards-sotd-message.txt
+
+      - name: Upload generated artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: awwwards-sotd-publication
+          path: |
+            output/awwwards-sotd-source.json
+            output/awwwards-sotd-screenshot.png
+            output/awwwards-sotd-palette.json
+            output/awwwards-sotd-palette.png
+            output/awwwards-sotd-message.txt
