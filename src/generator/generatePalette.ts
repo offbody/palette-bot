@@ -613,7 +613,7 @@ function createLightnessRamp(
   config: PresetConfig,
   harmony: PaletteHarmony,
 ) {
-  const ramp = config.lightness.slice(0, colorCount)
+  const ramp = sampleRamp(config.lightness, colorCount)
 
   if (harmony === "monochrome") {
     return ramp.map((lightness, index) =>
@@ -622,6 +622,19 @@ function createLightnessRamp(
   }
 
   return ramp
+}
+
+function sampleRamp(values: readonly number[], count: number) {
+  if (count === 1) {
+    return [values[Math.floor(values.length / 2)]!]
+  }
+
+  const lastIndex = values.length - 1
+
+  return Array.from({ length: count }, (_, index) => {
+    const position = (index / (count - 1)) * lastIndex
+    return values[Math.round(position)]!
+  })
 }
 
 function createChromaRamp(
