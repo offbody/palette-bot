@@ -10,6 +10,7 @@
     "check:fixtures": "node --import tsx src/scripts/checkRenderedFixtures.ts",
     "test:render": "pnpm run render:fixtures && pnpm run check:fixtures",
     "playwright:install": "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright playwright install chromium",
+    "playwright:install:ci": "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright playwright install --with-deps chromium",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
