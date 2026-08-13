@@ -42,6 +42,12 @@ Render the generated palette:
 pnpm run render -- output/generated-palette.json output/generated-palette.png
 ```
 
+Generate and render in one command:
+
+```bash
+pnpm run render:generated -- --colors 7 --seed 2026-08-13 --json output/generated-palette.json --png output/generated-palette.png
+```
+
 Check generator determinism and color validity:
 
 ```bash

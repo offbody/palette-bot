@@ -36,5 +36,8 @@ jobs:
       - name: Test palette generator
         run: pnpm run test:generator
 
+      - name: Render generated palette
+        run: pnpm run test:generated-render
+
       - name: Render fixture palettes
         run: pnpm run test:render
