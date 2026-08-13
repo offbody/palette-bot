@@ -12,7 +12,10 @@ const FIGMA_PALETTE_GAP = 24
 const INTER_FONT_PATH = path.resolve(
   "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
 )
-const DARKER_GROTESQUE_FONT_PATH = path.resolve(
+const DARKER_GROTESQUE_700_FONT_PATH = path.resolve(
+  "node_modules/@fontsource/darker-grotesque/files/darker-grotesque-latin-700-normal.woff2",
+)
+const DARKER_GROTESQUE_800_FONT_PATH = path.resolve(
   "node_modules/@fontsource/darker-grotesque/files/darker-grotesque-latin-800-normal.woff2",
 )
 
@@ -323,7 +326,7 @@ async function createFigmaPaletteHtml(palette: Palette) {
         color: #474f7a;
         font-size: 56px;
         line-height: normal;
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: 0;
         white-space: nowrap;
       }
@@ -359,7 +362,7 @@ async function createFigmaPaletteHtml(palette: Palette) {
         color: #ffffff;
         font-size: ${colorNameSize}px;
         line-height: normal;
-        font-weight: 800;
+        font-weight: 700;
         text-align: center;
         overflow-wrap: break-word;
         word-break: break-word;
@@ -444,11 +447,20 @@ async function readDarkerGrotesqueFontFaceCss() {
     return darkerGrotesqueFontFaceCss
   }
 
-  const font = await readFile(DARKER_GROTESQUE_FONT_PATH)
+  const boldFont = await readFile(DARKER_GROTESQUE_700_FONT_PATH)
+  const extraBoldFont = await readFile(DARKER_GROTESQUE_800_FONT_PATH)
   darkerGrotesqueFontFaceCss = `
     @font-face {
       font-family: "Darker Grotesque";
-      src: url("data:font/woff2;base64,${font.toString("base64")}") format("woff2");
+      src: url("data:font/woff2;base64,${boldFont.toString("base64")}") format("woff2");
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+    }
+
+    @font-face {
+      font-family: "Darker Grotesque";
+      src: url("data:font/woff2;base64,${extraBoldFont.toString("base64")}") format("woff2");
       font-style: normal;
       font-weight: 800;
       font-display: block;
