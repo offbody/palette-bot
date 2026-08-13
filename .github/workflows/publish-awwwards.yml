@@ -18,6 +18,22 @@ on:
         description: Optional Awwwards listing URL. Defaults to Sites of the Day.
         required: false
         type: string
+      enrich_from_screenshot:
+        description: Add dominant screenshot colors when the official palette has fewer colors.
+        required: true
+        default: true
+        type: boolean
+      max_colors:
+        description: Maximum rendered palette colors.
+        required: true
+        default: "5"
+        type: choice
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
 
 jobs:
   publish-awwwards:
@@ -56,10 +72,14 @@ jobs:
             echo "dry_run=false" >> "$GITHUB_OUTPUT"
             echo "case_url=" >> "$GITHUB_OUTPUT"
             echo "listing_url=" >> "$GITHUB_OUTPUT"
+            echo "enrich_from_screenshot=true" >> "$GITHUB_OUTPUT"
+            echo "max_colors=5" >> "$GITHUB_OUTPUT"
           else
             echo "dry_run=${{ inputs.dry_run }}" >> "$GITHUB_OUTPUT"
             echo "case_url=${{ inputs.case_url }}" >> "$GITHUB_OUTPUT"
             echo "listing_url=${{ inputs.listing_url }}" >> "$GITHUB_OUTPUT"
+            echo "enrich_from_screenshot=${{ inputs.enrich_from_screenshot }}" >> "$GITHUB_OUTPUT"
+            echo "max_colors=${{ inputs.max_colors }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Apply scheduled jitter
@@ -73,6 +93,8 @@ jobs:
         env:
           CASE_URL: ${{ steps.publication.outputs.case_url }}
           LISTING_URL: ${{ steps.publication.outputs.listing_url }}
+          ENRICH_FROM_SCREENSHOT: ${{ steps.publication.outputs.enrich_from_screenshot }}
+          MAX_COLORS: ${{ steps.publication.outputs.max_colors }}
         run: |
           args=(
             --source output/awwwards-sotd-source.json
@@ -81,6 +103,8 @@ jobs:
             --palette-png output/awwwards-sotd-palette.png
             --message output/awwwards-sotd-message.txt
             --theme figma
+            --enrich-from-screenshot "${ENRICH_FROM_SCREENSHOT}"
+            --max-colors "${MAX_COLORS}"
           )
 
           if [ -n "${CASE_URL}" ]; then

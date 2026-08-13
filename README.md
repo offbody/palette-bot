@@ -202,7 +202,7 @@ Then send `/publish` to the bot. The inline keyboard opens a compact Publish con
 
 ## Step 4: Content Source Layer
 
-The Awwwards Site of the Day source layer builds a second post type without changing the base palette publication flow. It fetches the latest Awwwards SOTD case, extracts the `Color Palette` HEX values, downloads the Awwwards screenshot, renders the extracted colors with the existing Figma palette renderer, and publishes both images to Telegram as a media group.
+The Awwwards Site of the Day source layer builds a second post type without changing the base palette publication flow. It fetches the latest Awwwards SOTD case, extracts the `Color Palette` HEX values, downloads the Awwwards screenshot, enriches sparse official palettes with dominant screenshot colors, renders the extracted colors with the existing Figma palette renderer, and publishes both images to Telegram as a media group.
 
 Create a local Awwwards preview:
 
@@ -224,6 +224,13 @@ Test a specific Awwwards case:
 pnpm run publish:awwwards:preview -- --case-url https://www.awwwards.com/sites/mosbys-files
 ```
 
+Screenshot enrichment keeps Awwwards colors first and only adds visually dominant screenshot colors until the palette reaches `max-colors`, default `5`. Disable enrichment or lower the limit when testing:
+
+```bash
+pnpm run publish:awwwards:preview -- --enrich-from-screenshot false
+pnpm run publish:awwwards:preview -- --max-colors 3
+```
+
 Publish or dry-run the generated Awwwards media group:
 
 ```bash
@@ -231,7 +238,7 @@ pnpm run publish:telegram:dry-run -- --photos output/awwwards-sotd-screenshot.pn
 pnpm run publish:telegram -- --photos output/awwwards-sotd-screenshot.png,output/awwwards-sotd-palette.png --message output/awwwards-sotd-message.txt
 ```
 
-GitHub Actions has a separate `Publish Awwwards SOTD` workflow. Manual runs default to `dry_run=true` and can optionally receive a direct Awwwards `case_url`. Scheduled runs execute daily at `08:15 UTC` with a deterministic 0 to 70 minute jitter.
+GitHub Actions has a separate `Publish Awwwards SOTD` workflow. Manual runs default to `dry_run=true` and can optionally receive a direct Awwwards `case_url`, toggle screenshot enrichment, and choose `max_colors` from 1 to 5. Scheduled runs execute daily at `08:15 UTC` with screenshot enrichment enabled, `max_colors=5`, and a deterministic 0 to 70 minute jitter.
 
 Check generator determinism and color validity:
 

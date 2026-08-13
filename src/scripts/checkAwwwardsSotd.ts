@@ -4,6 +4,7 @@ import {
   extractAwwwardsPaletteColors,
   type AwwwardsSotdSource,
 } from "../sources/awwwardsSotd.js"
+import { mergePaletteColors } from "../sources/extractImagePalette.js"
 
 const sampleText = `
 Site of the Day - Aug 13, 2026
@@ -24,6 +25,16 @@ Technologies & Tools
 const colors = extractAwwwardsPaletteColors(sampleText)
 
 assertEqual(colors.join(","), "#000000,#D71E1E,#1E4BD7")
+
+const enrichedColors = mergePaletteColors(
+  ["#D71E1E"],
+  ["#D91F20", "#1E4BD7", "#181818", "#F7F7F7"],
+  {
+    maxColors: 4,
+  },
+)
+
+assertEqual(enrichedColors.join(","), "#D71E1E,#1E4BD7,#181818,#F7F7F7")
 
 const source: AwwwardsSotdSource = {
   title: "Mosby's Files",

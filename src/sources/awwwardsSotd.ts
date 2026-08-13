@@ -338,7 +338,7 @@ function nameColorFromHex(hex: string) {
   }
 
   if (saturation < 10) {
-    if (lightness < 25) return "Charcoal"
+    if (lightness < 25) return "Ink"
     if (lightness < 45) return "Slate"
     if (lightness < 70) return "Gray"
     return "Mist"

@@ -7,6 +7,10 @@ import {
   downloadAwwwardsScreenshot,
   fetchAwwwardsSotd,
 } from "../sources/awwwardsSotd.js"
+import {
+  extractDominantColorsFromImage,
+  mergePaletteColors,
+} from "../sources/extractImagePalette.js"
 
 const args = parseArgs(process.argv.slice(2))
 const sourcePath = path.resolve(args.source ?? "output/awwwards-sotd-source.json")
@@ -23,13 +27,17 @@ const messagePath = path.resolve(
   args.message ?? "output/awwwards-sotd-message.txt",
 )
 const rendererTheme = args.theme ? parseRenderPaletteTheme(args.theme) : "figma"
+const enrichFromScreenshot = args["enrich-from-screenshot"] !== "false"
+const maxColors = args["max-colors"]
+  ? Number.parseInt(args["max-colors"], 10)
+  : 5
+
+validateMaxColors(maxColors)
 
 const source = await fetchAwwwardsSotd({
   listingUrl: args["listing-url"],
   caseUrl: args["case-url"],
 })
-const palette = createAwwwardsPalette(source)
-const message = createAwwwardsSotdMessage(source, palette)
 
 await Promise.all([
   mkdir(path.dirname(sourcePath), { recursive: true }),
@@ -39,11 +47,25 @@ await Promise.all([
   mkdir(path.dirname(messagePath), { recursive: true }),
 ])
 
+await downloadAwwwardsScreenshot(source, screenshotPath)
+
+if (enrichFromScreenshot && source.colors.length < maxColors) {
+  const screenshotColors = await extractDominantColorsFromImage(screenshotPath, {
+    maxColors: maxColors * 3,
+  })
+
+  source.colors = mergePaletteColors(source.colors, screenshotColors, {
+    maxColors,
+  })
+}
+
+const palette = createAwwwardsPalette(source)
+const message = createAwwwardsSotdMessage(source, palette)
+
 await Promise.all([
   writeFile(sourcePath, `${JSON.stringify(source, null, 2)}\n`, "utf8"),
   writeFile(paletteJsonPath, `${JSON.stringify(palette, null, 2)}\n`, "utf8"),
   writeFile(messagePath, `${message}\n`, "utf8"),
-  downloadAwwwardsScreenshot(source, screenshotPath),
   renderPalette(palette, {
     outputPath: palettePngPath,
     theme: rendererTheme,
@@ -51,6 +73,9 @@ await Promise.all([
 ])
 
 console.log(`Fetched ${source.title}`)
+console.log(
+  `Colors ${source.colors.join(", ")}${enrichFromScreenshot ? " (screenshot enrichment enabled)" : ""}`,
+)
 console.log(`Source ${path.relative(process.cwd(), sourcePath)}`)
 console.log(`Screenshot ${path.relative(process.cwd(), screenshotPath)}`)
 console.log(`Palette JSON ${path.relative(process.cwd(), paletteJsonPath)}`)
@@ -84,4 +109,10 @@ function parseArgs(rawArgs: string[]) {
   }
 
   return parsed
+}
+
+function validateMaxColors(maxColors: number) {
+  if (!Number.isInteger(maxColors) || maxColors < 1 || maxColors > 5) {
+    throw new Error("Awwwards max colors must be between 1 and 5.")
+  }
 }
