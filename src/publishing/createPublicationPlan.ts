@@ -80,8 +80,11 @@ export function createPublicationPlan(
       )
     : presetWeights
   const preset = requestedPreset ?? pickWeighted(compatiblePresetWeights, random)
+  const presetHarmonies = getPaletteHarmoniesForPreset(preset)
   const harmony =
-    requestedHarmony ?? pick(getPaletteHarmoniesForPreset(preset), random)
+    requestedHarmony && presetHarmonies.includes(requestedHarmony)
+      ? requestedHarmony
+      : pick(presetHarmonies, random)
 
   validatePresetHarmony(preset, harmony)
 

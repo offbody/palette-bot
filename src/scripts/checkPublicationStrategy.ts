@@ -77,6 +77,21 @@ if (!getPaletteHarmoniesForPreset(harmonyOnlyPlan.preset).includes("warm")) {
   )
 }
 
+const conflictingOverridePlan = createPublicationPlan({
+  date: "2026-08-13",
+  preset: "minimal-neutral",
+  harmony: "warm",
+})
+
+if (
+  conflictingOverridePlan.preset !== "minimal-neutral" ||
+  !getPaletteHarmoniesForPreset("minimal-neutral").includes(
+    conflictingOverridePlan.harmony,
+  )
+) {
+  throw new Error("Conflicting preset/harmony override was not resolved.")
+}
+
 console.log(
   `Publication strategy: ${presets.size} presets, ${harmonies.size} harmonies, ${colorCounts.size} color counts.`,
 )
