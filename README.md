@@ -179,7 +179,7 @@ Run the local control bot:
 pnpm run telegram:control -- --env .secrets/control.env
 ```
 
-Then send `/publish` to the bot. The inline keyboard can adjust `dry_run`, `attempts`, `min_score`, `color_count`, `preset`, and `harmony`, then run the same GitHub Actions `Publish` workflow.
+Then send `/publish` to the bot. The inline keyboard opens a compact Publish control menu with separate sections for quality, color count, preset, and harmony, then runs the same GitHub Actions `Publish` workflow.
 
 Check generator determinism and color validity:
 

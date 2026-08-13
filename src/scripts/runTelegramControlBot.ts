@@ -20,6 +20,13 @@ type PublishDraft = {
   harmony: HarmonyChoice
 }
 
+type MenuView = "main" | "quality" | "color_count" | "preset" | "harmony"
+
+type ActionResult = {
+  notice?: string
+  view: MenuView
+}
+
 type ColorCountChoice = "auto" | "1" | "2" | "3" | "4" | "5"
 
 type PresetChoice =
@@ -191,10 +198,12 @@ async function handleCallbackQuery(
 
   const draft = getDraft(drafts, callbackQuery.from.id)
   const data = callbackQuery.data ?? ""
+  let view: MenuView = "main"
 
   try {
-    const notice = await applyAction(config, draft, data)
-    await answerCallbackQuery(config.botToken, callbackQuery.id, notice)
+    const result = await applyAction(config, draft, data)
+    view = result.view
+    await answerCallbackQuery(config.botToken, callbackQuery.id, result.notice)
   } catch (error) {
     await answerCallbackQuery(
       config.botToken,
@@ -208,6 +217,7 @@ async function handleCallbackQuery(
     message.chat.id,
     message.message_id,
     draft,
+    view,
   )
 }
 
@@ -215,47 +225,53 @@ async function applyAction(
   config: ControlBotConfig,
   draft: PublishDraft,
   data: string,
-) {
-  if (data === "noop") return
+): Promise<ActionResult> {
+  if (data === "noop") {
+    return { view: "main" }
+  }
+
+  if (data.startsWith("view:")) {
+    return { view: parseMenuView(data.slice("view:".length)) }
+  }
 
   if (data === "toggle:dry_run") {
     draft.dryRun = !draft.dryRun
-    return
+    return { view: "main" }
   }
 
   if (data === "attempts:-") {
     draft.attempts = Math.max(1, draft.attempts - 8)
-    return
+    return { view: "quality" }
   }
 
   if (data === "attempts:+") {
     draft.attempts = Math.min(64, draft.attempts + 8)
-    return
+    return { view: "quality" }
   }
 
   if (data === "min_score:-") {
     draft.minScore = Math.max(1, draft.minScore - 5)
-    return
+    return { view: "quality" }
   }
 
   if (data === "min_score:+") {
     draft.minScore = Math.min(100, draft.minScore + 5)
-    return
+    return { view: "quality" }
   }
 
   if (data.startsWith("preset:")) {
     draft.preset = parsePresetChoice(data.slice("preset:".length))
-    return
+    return { view: "preset" }
   }
 
   if (data.startsWith("color_count:")) {
     draft.colorCount = parseColorCountChoice(data.slice("color_count:".length))
-    return
+    return { view: "color_count" }
   }
 
   if (data.startsWith("harmony:")) {
     draft.harmony = parseHarmonyChoice(data.slice("harmony:".length))
-    return
+    return { view: "harmony" }
   }
 
   if (data === "run") {
@@ -273,7 +289,10 @@ async function applyAction(
         harmony: draft.harmony,
       },
     })
-    return "Publish workflow dispatched."
+    return {
+      notice: "Publish workflow dispatched.",
+      view: "main",
+    }
   }
 
   throw new Error("Unknown action.")
@@ -286,8 +305,8 @@ async function sendPublishMenu(
 ) {
   await sendMessage(botToken, {
     chatId,
-    text: renderDraft(draft),
-    replyMarkup: createPublishKeyboard(draft),
+    text: renderDraft(draft, "main"),
+    replyMarkup: createPublishKeyboard(draft, "main"),
   })
 }
 
@@ -296,13 +315,14 @@ async function editPublishMenu(
   chatId: number,
   messageId: number,
   draft: PublishDraft,
+  view: MenuView,
 ) {
   try {
     await callTelegramApi(botToken, "editMessageText", {
       chat_id: chatId,
       message_id: messageId,
-      text: renderDraft(draft),
-      reply_markup: createPublishKeyboard(draft),
+      text: renderDraft(draft, view),
+      reply_markup: createPublishKeyboard(draft, view),
     })
   } catch (error) {
     if (isMessageNotModifiedError(error)) {
@@ -313,22 +333,126 @@ async function editPublishMenu(
   }
 }
 
-function renderDraft(draft: PublishDraft) {
+function renderDraft(draft: PublishDraft, view: MenuView) {
+  if (view === "quality") {
+    return [
+      "Publish quality",
+      "",
+      `Minimum score: ${draft.minScore}`,
+      `Strategy attempts: ${draft.attempts}`,
+      "",
+      "Higher score is stricter. More attempts gives the generator more chances to find a matching palette.",
+    ].join("\n")
+  }
+
+  if (view === "color_count") {
+    return [
+      "Color count",
+      "",
+      `Current: ${draft.colorCount}`,
+      "",
+      "Auto chooses 2-5 colors for scheduled-style generation. Choose 1-5 when you want an exact count.",
+    ].join("\n")
+  }
+
+  if (view === "preset") {
+    return [
+      "Palette preset",
+      "",
+      `Current: ${draft.preset}`,
+      "",
+      "Preset controls the overall visual character of the palette.",
+    ].join("\n")
+  }
+
+  if (view === "harmony") {
+    return [
+      "Harmony mode",
+      "",
+      `Current: ${draft.harmony}`,
+      "",
+      "Harmony controls the relationship between colors.",
+    ].join("\n")
+  }
+
   return [
     "Publish control",
     "",
-    `dry_run: ${draft.dryRun}`,
-    `attempts: ${draft.attempts}`,
-    `min_score: ${draft.minScore}`,
-    `color_count: ${draft.colorCount}`,
-    `preset: ${draft.preset}`,
-    `harmony: ${draft.harmony}`,
+    `Mode: ${draft.dryRun ? "test / dry run" : "live publish"}`,
+    `Quality: score ${draft.minScore}, ${draft.attempts} attempts`,
+    `Colors: ${draft.colorCount}`,
+    `Preset: ${draft.preset}`,
+    `Harmony: ${draft.harmony}`,
     "",
-    "Use buttons to adjust values, then run Publish.",
+    "Open a section to adjust values, then run Publish.",
   ].join("\n")
 }
 
-function createPublishKeyboard(draft: PublishDraft) {
+function createPublishKeyboard(draft: PublishDraft, view: MenuView) {
+  if (view === "quality") {
+    return {
+      inline_keyboard: [
+        [
+          { text: "- score", callback_data: "min_score:-" },
+          { text: `score ${draft.minScore}`, callback_data: "view:quality" },
+          { text: "+ score", callback_data: "min_score:+" },
+        ],
+        [
+          { text: "- attempts", callback_data: "attempts:-" },
+          { text: `${draft.attempts} attempts`, callback_data: "view:quality" },
+          { text: "+ attempts", callback_data: "attempts:+" },
+        ],
+        [{ text: "Back", callback_data: "view:main" }],
+      ],
+    }
+  }
+
+  if (view === "color_count") {
+    return {
+      inline_keyboard: [
+        ...chunk(
+          colorCountChoices.map((colorCount) => ({
+            text:
+              colorCount === draft.colorCount ? `* ${colorCount}` : colorCount,
+            callback_data: `color_count:${colorCount}`,
+          })),
+          3,
+        ),
+        [{ text: "Back", callback_data: "view:main" }],
+      ],
+    }
+  }
+
+  if (view === "preset") {
+    return {
+      inline_keyboard: [
+        ...chunk(
+          presetChoices.map((preset) => ({
+            text: preset === draft.preset ? `* ${preset}` : preset,
+            callback_data: `preset:${preset}`,
+          })),
+          2,
+        ),
+        [{ text: "Back", callback_data: "view:main" }],
+      ],
+    }
+  }
+
+  if (view === "harmony") {
+    return {
+      inline_keyboard: [
+        ...chunk(
+          harmonyChoices.map((harmony) => ({
+            text: harmony === draft.harmony ? `* ${harmony}` : harmony,
+            callback_data: `harmony:${harmony}`,
+          })),
+          2,
+        ),
+        [{ text: "Back", callback_data: "view:main" }],
+      ],
+    }
+  }
+
   return {
     inline_keyboard: [
       [
@@ -338,36 +462,13 @@ function createPublishKeyboard(draft: PublishDraft) {
         },
       ],
       [
-        { text: "- attempts", callback_data: "attempts:-" },
-        { text: `attempts ${draft.attempts}`, callback_data: "noop" },
-        { text: "+ attempts", callback_data: "attempts:+" },
+        { text: `Colors: ${draft.colorCount}`, callback_data: "view:color_count" },
+        { text: "Quality", callback_data: "view:quality" },
       ],
       [
-        { text: "- score", callback_data: "min_score:-" },
-        { text: `score ${draft.minScore}`, callback_data: "noop" },
-        { text: "+ score", callback_data: "min_score:+" },
+        { text: `Preset: ${draft.preset}`, callback_data: "view:preset" },
       ],
-      ...chunk(
-        colorCountChoices.map((colorCount) => ({
-          text: colorCount === draft.colorCount ? `* ${colorCount}` : colorCount,
-          callback_data: `color_count:${colorCount}`,
-        })),
-        3,
-      ),
-      ...chunk(
-        presetChoices.map((preset) => ({
-          text: preset === draft.preset ? `* ${preset}` : preset,
-          callback_data: `preset:${preset}`,
-        })),
-        2,
-      ),
-      ...chunk(
-        harmonyChoices.map((harmony) => ({
-          text: harmony === draft.harmony ? `* ${harmony}` : harmony,
-          callback_data: `harmony:${harmony}`,
-        })),
-        2,
-      ),
+      [{ text: `Harmony: ${draft.harmony}`, callback_data: "view:harmony" }],
       [{ text: "Run Publish", callback_data: "run" }],
     ],
   }
@@ -564,6 +665,20 @@ function parseAdminUserIds(value: string) {
   }
 
   return adminUserIds
+}
+
+function parseMenuView(value: string): MenuView {
+  if (
+    value === "main" ||
+    value === "quality" ||
+    value === "color_count" ||
+    value === "preset" ||
+    value === "harmony"
+  ) {
+    return value
+  }
+
+  throw new Error(`Unknown menu view: ${value}`)
 }
 
 function parsePresetChoice(value: string): PresetChoice {
