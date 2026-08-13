@@ -59,18 +59,22 @@ jobs:
         id: publication
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.date }}" ]; then
-            echo "date=${{ inputs.date }}" >> "$GITHUB_OUTPUT"
+            publication_date="${{ inputs.date }}"
           else
-            echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+            publication_date="$(date -u +%F)"
           fi
+          echo "date=${publication_date}" >> "$GITHUB_OUTPUT"
+
           if [ "${{ github.event_name }}" = "schedule" ]; then
             echo "dry_run=false" >> "$GITHUB_OUTPUT"
             echo "attempts=16" >> "$GITHUB_OUTPUT"
             echo "min_score=70" >> "$GITHUB_OUTPUT"
+            echo "seed=post:${publication_date}" >> "$GITHUB_OUTPUT"
           else
             echo "dry_run=${{ inputs.dry_run }}" >> "$GITHUB_OUTPUT"
             echo "attempts=${{ inputs.attempts }}" >> "$GITHUB_OUTPUT"
             echo "min_score=${{ inputs.min_score }}" >> "$GITHUB_OUTPUT"
+            echo "seed=manual:${publication_date}:${{ github.run_id }}:${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Apply scheduled jitter
@@ -83,6 +87,7 @@ jobs:
       - name: Create publication preview
         run: >
           pnpm run publish:preview -- --date "${{ steps.publication.outputs.date }}"
+          --seed "${{ steps.publication.outputs.seed }}"
           --attempts "${{ steps.publication.outputs.attempts }}"
           --min-score "${{ steps.publication.outputs.min_score }}"
           --plan output/post-plan.json

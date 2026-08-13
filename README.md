@@ -140,6 +140,8 @@ Manual GitHub Actions publishing:
 
 Scheduled GitHub Actions publishing runs daily at 09:00 UTC. It applies a deterministic 0 to 70 minute delay before publishing, so posts land between 13:00 and 14:10 in the Europe/Samara timezone. Manual runs do not wait.
 
+Scheduled runs use a date-based seed, so each calendar day is reproducible. Manual runs use a run-based seed, so repeated manual publishes on the same day produce different palettes.
+
 You can still override any decision:
 
 ```bash
