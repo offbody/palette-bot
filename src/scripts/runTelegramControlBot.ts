@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { getPaletteHarmoniesForPreset } from "../generator/generatePalette.js"
-import { dispatchWorkflow } from "../github/githubActionsClient.js"
+import {
+  dispatchWorkflow,
+  upsertRepositoryVariable,
+} from "../github/githubActionsClient.js"
 import type { PaletteHarmony, PalettePreset } from "../types.js"
 
 type ControlBotConfig = {
@@ -22,7 +25,18 @@ type PublishDraft = {
   harmony: HarmonyChoice
 }
 
-type MenuView = "main" | "quality" | "color_count" | "preset" | "harmony"
+type ScheduleDraft = {
+  postsPerDay: number
+  dayInterval: number
+}
+
+type MenuView =
+  | "main"
+  | "quality"
+  | "color_count"
+  | "preset"
+  | "harmony"
+  | "schedule"
 
 type ActionResult = {
   notice?: string
@@ -106,6 +120,7 @@ const args = parseArgs(process.argv.slice(2))
 const envPath = path.resolve(args.env ?? ".secrets/control.env")
 const config = await loadControlBotConfig(envPath)
 const drafts = new Map<number, PublishDraft>()
+const scheduleDrafts = new Map<number, ScheduleDraft>()
 
 let offset = 0
 console.log("Telegram control bot started.")
@@ -117,7 +132,7 @@ while (true) {
     offset = update.update_id + 1
 
     try {
-      await handleUpdate(config, drafts, update)
+      await handleUpdate(config, drafts, scheduleDrafts, update)
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Update failed.")
     }
@@ -127,21 +142,23 @@ while (true) {
 async function handleUpdate(
   config: ControlBotConfig,
   drafts: Map<number, PublishDraft>,
+  scheduleDrafts: Map<number, ScheduleDraft>,
   update: TelegramUpdate,
 ) {
   if (update.message) {
-    await handleMessage(config, drafts, update.message)
+    await handleMessage(config, drafts, scheduleDrafts, update.message)
     return
   }
 
   if (update.callback_query) {
-    await handleCallbackQuery(config, drafts, update.callback_query)
+    await handleCallbackQuery(config, drafts, scheduleDrafts, update.callback_query)
   }
 }
 
 async function handleMessage(
   config: ControlBotConfig,
   drafts: Map<number, PublishDraft>,
+  scheduleDrafts: Map<number, ScheduleDraft>,
   message: NonNullable<TelegramUpdate["message"]>,
 ) {
   const userId = message.from?.id
@@ -156,19 +173,34 @@ async function handleMessage(
 
   if (message.text === "/start" || message.text === "/publish") {
     const draft = getDraft(drafts, userId)
-    await sendPublishMenu(config.botToken, message.chat.id, draft)
+    const scheduleDraft = getScheduleDraft(scheduleDrafts, userId)
+    await sendPublishMenu(config.botToken, message.chat.id, draft, scheduleDraft)
+    return
+  }
+
+  if (message.text === "/schedule") {
+    const draft = getDraft(drafts, userId)
+    const scheduleDraft = getScheduleDraft(scheduleDrafts, userId)
+    await sendPublishMenu(
+      config.botToken,
+      message.chat.id,
+      draft,
+      scheduleDraft,
+      "schedule",
+    )
     return
   }
 
   await sendMessage(config.botToken, {
     chatId: message.chat.id,
-    text: "Use /publish to open the Publish control menu.",
+    text: "Use /publish to open publishing controls or /schedule to open scheduled settings.",
   })
 }
 
 async function handleCallbackQuery(
   config: ControlBotConfig,
   drafts: Map<number, PublishDraft>,
+  scheduleDrafts: Map<number, ScheduleDraft>,
   callbackQuery: NonNullable<TelegramUpdate["callback_query"]>,
 ) {
   const message = callbackQuery.message
@@ -184,11 +216,12 @@ async function handleCallbackQuery(
   }
 
   const draft = getDraft(drafts, callbackQuery.from.id)
+  const scheduleDraft = getScheduleDraft(scheduleDrafts, callbackQuery.from.id)
   const data = callbackQuery.data ?? ""
   let view: MenuView = "main"
 
   try {
-    const result = await applyAction(config, draft, data)
+    const result = await applyAction(config, draft, scheduleDraft, data)
     view = result.view
     await answerCallbackQuery(config.botToken, callbackQuery.id, result.notice)
   } catch (error) {
@@ -204,6 +237,7 @@ async function handleCallbackQuery(
     message.chat.id,
     message.message_id,
     draft,
+    scheduleDraft,
     view,
   )
 }
@@ -211,6 +245,7 @@ async function handleCallbackQuery(
 async function applyAction(
   config: ControlBotConfig,
   draft: PublishDraft,
+  scheduleDraft: ScheduleDraft,
   data: string,
 ): Promise<ActionResult> {
   if (data === "noop") {
@@ -244,6 +279,48 @@ async function applyAction(
   if (data === "min_score:+") {
     draft.minScore = Math.min(100, draft.minScore + 5)
     return { view: "quality" }
+  }
+
+  if (data === "schedule:posts:-") {
+    scheduleDraft.postsPerDay = Math.max(1, scheduleDraft.postsPerDay - 1)
+    return { view: "schedule" }
+  }
+
+  if (data === "schedule:posts:+") {
+    scheduleDraft.postsPerDay = Math.min(5, scheduleDraft.postsPerDay + 1)
+    return { view: "schedule" }
+  }
+
+  if (data === "schedule:interval:-") {
+    scheduleDraft.dayInterval = Math.max(1, scheduleDraft.dayInterval - 1)
+    return { view: "schedule" }
+  }
+
+  if (data === "schedule:interval:+") {
+    scheduleDraft.dayInterval = Math.min(30, scheduleDraft.dayInterval + 1)
+    return { view: "schedule" }
+  }
+
+  if (data === "schedule:save") {
+    await Promise.all([
+      upsertRepositoryVariable({
+        token: config.githubToken,
+        repository: config.githubRepository,
+        name: "SCHEDULE_POSTS_PER_DAY",
+        value: String(scheduleDraft.postsPerDay),
+      }),
+      upsertRepositoryVariable({
+        token: config.githubToken,
+        repository: config.githubRepository,
+        name: "SCHEDULE_DAY_INTERVAL",
+        value: String(scheduleDraft.dayInterval),
+      }),
+    ])
+
+    return {
+      notice: "Scheduled settings saved to GitHub.",
+      view: "schedule",
+    }
   }
 
   if (data.startsWith("preset:")) {
@@ -315,11 +392,13 @@ async function sendPublishMenu(
   botToken: string,
   chatId: number,
   draft: PublishDraft,
+  scheduleDraft: ScheduleDraft,
+  view: MenuView = "main",
 ) {
   await sendMessage(botToken, {
     chatId,
-    text: renderDraft(draft, "main"),
-    replyMarkup: createPublishKeyboard(draft, "main"),
+    text: renderDraft(draft, scheduleDraft, view),
+    replyMarkup: createPublishKeyboard(draft, scheduleDraft, view),
   })
 }
 
@@ -328,14 +407,15 @@ async function editPublishMenu(
   chatId: number,
   messageId: number,
   draft: PublishDraft,
+  scheduleDraft: ScheduleDraft,
   view: MenuView,
 ) {
   try {
     await callTelegramApi(botToken, "editMessageText", {
       chat_id: chatId,
       message_id: messageId,
-      text: renderDraft(draft, view),
-      reply_markup: createPublishKeyboard(draft, view),
+      text: renderDraft(draft, scheduleDraft, view),
+      reply_markup: createPublishKeyboard(draft, scheduleDraft, view),
     })
   } catch (error) {
     if (isMessageNotModifiedError(error)) {
@@ -346,7 +426,11 @@ async function editPublishMenu(
   }
 }
 
-function renderDraft(draft: PublishDraft, view: MenuView) {
+function renderDraft(
+  draft: PublishDraft,
+  scheduleDraft: ScheduleDraft,
+  view: MenuView,
+) {
   if (view === "quality") {
     return [
       "Publish quality",
@@ -390,6 +474,17 @@ function renderDraft(draft: PublishDraft, view: MenuView) {
     ].join("\n")
   }
 
+  if (view === "schedule") {
+    return [
+      "Scheduled publishing",
+      "",
+      `Posts per day: ${scheduleDraft.postsPerDay}`,
+      `Day interval: every ${scheduleDraft.dayInterval} day${scheduleDraft.dayInterval === 1 ? "" : "s"}`,
+      "",
+      "Save sends these settings to GitHub repository variables.",
+    ].join("\n")
+  }
+
   return [
     "Publish control",
     "",
@@ -398,12 +493,17 @@ function renderDraft(draft: PublishDraft, view: MenuView) {
     `Colors: ${draft.colorCount}`,
     `Preset: ${draft.preset}`,
     `Harmony: ${draft.harmony}`,
+    `Scheduled: ${scheduleDraft.postsPerDay}/day, every ${scheduleDraft.dayInterval} day${scheduleDraft.dayInterval === 1 ? "" : "s"}`,
     "",
     "Open a section to adjust values, then run Publish.",
   ].join("\n")
 }
 
-function createPublishKeyboard(draft: PublishDraft, view: MenuView) {
+function createPublishKeyboard(
+  draft: PublishDraft,
+  scheduleDraft: ScheduleDraft,
+  view: MenuView,
+) {
   if (view === "quality") {
     return {
       inline_keyboard: [
@@ -468,6 +568,31 @@ function createPublishKeyboard(draft: PublishDraft, view: MenuView) {
     }
   }
 
+  if (view === "schedule") {
+    return {
+      inline_keyboard: [
+        [
+          { text: "- posts", callback_data: "schedule:posts:-" },
+          {
+            text: `${scheduleDraft.postsPerDay} per day`,
+            callback_data: "view:schedule",
+          },
+          { text: "+ posts", callback_data: "schedule:posts:+" },
+        ],
+        [
+          { text: "- interval", callback_data: "schedule:interval:-" },
+          {
+            text: `every ${scheduleDraft.dayInterval}d`,
+            callback_data: "view:schedule",
+          },
+          { text: "+ interval", callback_data: "schedule:interval:+" },
+        ],
+        [{ text: "Save Scheduled to GitHub", callback_data: "schedule:save" }],
+        [{ text: "Back", callback_data: "view:main" }],
+      ],
+    }
+  }
+
   return {
     inline_keyboard: [
       [
@@ -484,6 +609,7 @@ function createPublishKeyboard(draft: PublishDraft, view: MenuView) {
         { text: `Preset: ${draft.preset}`, callback_data: "view:preset" },
       ],
       [{ text: `Harmony: ${draft.harmony}`, callback_data: "view:harmony" }],
+      [{ text: "Scheduled", callback_data: "view:schedule" }],
       [{ text: "Run Publish", callback_data: "run" }],
     ],
   }
@@ -505,6 +631,25 @@ function getDraft(drafts: Map<number, PublishDraft>, userId: number) {
     harmony: "auto",
   } satisfies PublishDraft
   drafts.set(userId, draft)
+
+  return draft
+}
+
+function getScheduleDraft(
+  scheduleDrafts: Map<number, ScheduleDraft>,
+  userId: number,
+) {
+  const existingDraft = scheduleDrafts.get(userId)
+
+  if (existingDraft) {
+    return existingDraft
+  }
+
+  const draft = {
+    postsPerDay: 1,
+    dayInterval: 1,
+  } satisfies ScheduleDraft
+  scheduleDrafts.set(userId, draft)
 
   return draft
 }
@@ -688,7 +833,8 @@ function parseMenuView(value: string): MenuView {
     value === "quality" ||
     value === "color_count" ||
     value === "preset" ||
-    value === "harmony"
+    value === "harmony" ||
+    value === "schedule"
   ) {
     return value
   }

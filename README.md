@@ -140,7 +140,12 @@ Manual GitHub Actions publishing:
 4. Keep `color_count`, `preset`, and `harmony` set to `auto` for deterministic selection, or choose values manually from the dropdowns.
 5. Disable `dry_run` only when you want to publish to the Telegram channel.
 
-Scheduled GitHub Actions publishing runs daily at 09:00 UTC. It applies a deterministic 0 to 70 minute delay before publishing, so posts land between 13:00 and 14:10 in the Europe/Samara timezone. Manual runs do not wait.
+Scheduled GitHub Actions publishing has five daily UTC slots: 09:00, 10:30, 12:00, 13:30, and 15:00. Repository variables control how many of those slots publish and how often posting days occur:
+
+- `SCHEDULE_POSTS_PER_DAY`, default `1`, range 1 to 5
+- `SCHEDULE_DAY_INTERVAL`, default `1`, range 1 to 30
+
+Each active scheduled slot applies a deterministic 0 to 70 minute delay before publishing. Manual runs do not wait.
 
 Scheduled runs use a date-based seed, so each calendar day is reproducible. Manual runs use a run-based seed, so repeated manual publishes on the same day produce different palettes.
 
@@ -173,7 +178,7 @@ GITHUB_WORKFLOW_ID=publish.yml
 GITHUB_REF=main
 ```
 
-`TELEGRAM_ADMIN_USER_IDS` is a comma-separated list of numeric Telegram user ids allowed to control publishing. If a non-whitelisted user opens the bot, the bot replies with that user's numeric id for setup. `GITHUB_TOKEN` must be allowed to dispatch repository workflows and can be the same PAT used for repository automation.
+`TELEGRAM_ADMIN_USER_IDS` is a comma-separated list of numeric Telegram user ids allowed to control publishing. If a non-whitelisted user opens the bot, the bot replies with that user's numeric id for setup. `GITHUB_TOKEN` must be allowed to dispatch repository workflows and write repository variables. It can be the same PAT used for repository automation.
 
 Run the local control bot:
 
@@ -181,7 +186,7 @@ Run the local control bot:
 pnpm run telegram:control -- --env .secrets/control.env
 ```
 
-Then send `/publish` to the bot. The inline keyboard opens a compact Publish control menu with separate sections for quality, color count, preset, and harmony, then runs the same GitHub Actions `Publish` workflow.
+Then send `/publish` to the bot. The inline keyboard opens a compact Publish control menu with separate sections for quality, color count, preset, harmony, and scheduled settings, then runs the same GitHub Actions `Publish` workflow. Send `/schedule` to open scheduled settings directly. The scheduled settings menu saves `SCHEDULE_POSTS_PER_DAY` and `SCHEDULE_DAY_INTERVAL` to GitHub repository variables.
 
 Check generator determinism and color validity:
 

@@ -3,6 +3,10 @@ name: Publish
 on:
   schedule:
     - cron: "0 9 * * *"
+    - cron: "30 10 * * *"
+    - cron: "0 12 * * *"
+    - cron: "30 13 * * *"
+    - cron: "0 15 * * *"
   workflow_dispatch:
     inputs:
       date:
@@ -74,28 +78,82 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       JITTER_MAX_MINUTES: 70
+      SCHEDULE_POSTS_PER_DAY: ${{ vars.SCHEDULE_POSTS_PER_DAY || '1' }}
+      SCHEDULE_DAY_INTERVAL: ${{ vars.SCHEDULE_DAY_INTERVAL || '1' }}
 
     steps:
+      - name: Check scheduled settings
+        id: schedule_settings
+        run: |
+          should_publish=true
+          slot=1
+
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            case "${{ github.event.schedule }}" in
+              "0 9 * * *") slot=1 ;;
+              "30 10 * * *") slot=2 ;;
+              "0 12 * * *") slot=3 ;;
+              "30 13 * * *") slot=4 ;;
+              "0 15 * * *") slot=5 ;;
+              *) slot=1 ;;
+            esac
+
+            posts_per_day="${SCHEDULE_POSTS_PER_DAY}"
+            day_interval="${SCHEDULE_DAY_INTERVAL}"
+
+            if ! [[ "${posts_per_day}" =~ ^[0-9]+$ ]]; then
+              posts_per_day=1
+            fi
+
+            if ! [[ "${day_interval}" =~ ^[0-9]+$ ]]; then
+              day_interval=1
+            fi
+
+            if [ "${posts_per_day}" -lt 1 ]; then posts_per_day=1; fi
+            if [ "${posts_per_day}" -gt 5 ]; then posts_per_day=5; fi
+            if [ "${day_interval}" -lt 1 ]; then day_interval=1; fi
+            if [ "${day_interval}" -gt 30 ]; then day_interval=30; fi
+
+            day_index=$((($(date -u +%s) / 86400)))
+
+            if [ "${slot}" -gt "${posts_per_day}" ]; then
+              should_publish=false
+            fi
+
+            if [ $((day_index % day_interval)) -ne 0 ]; then
+              should_publish=false
+            fi
+          fi
+
+          echo "should_publish=${should_publish}" >> "$GITHUB_OUTPUT"
+          echo "slot=${slot}" >> "$GITHUB_OUTPUT"
+
       - name: Check out repository
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
         uses: actions/checkout@v4
 
       - name: Set up pnpm
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
         uses: pnpm/action-setup@v4
 
       - name: Set up Node.js
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
 
       - name: Install dependencies
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
         run: pnpm run playwright:install:ci
 
       - name: Resolve publication date
         id: publication
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.date }}" ]; then
             publication_date="${{ inputs.date }}"
@@ -111,7 +169,7 @@ jobs:
             echo "color_count=auto" >> "$GITHUB_OUTPUT"
             echo "preset=auto" >> "$GITHUB_OUTPUT"
             echo "harmony=auto" >> "$GITHUB_OUTPUT"
-            echo "seed=post:${publication_date}" >> "$GITHUB_OUTPUT"
+            echo "seed=post:${publication_date}:slot-${{ steps.schedule_settings.outputs.slot }}" >> "$GITHUB_OUTPUT"
           else
             echo "dry_run=${{ inputs.dry_run }}" >> "$GITHUB_OUTPUT"
             echo "attempts=${{ inputs.attempts }}" >> "$GITHUB_OUTPUT"
@@ -123,13 +181,14 @@ jobs:
           fi
 
       - name: Apply scheduled jitter
-        if: ${{ github.event_name == 'schedule' }}
+        if: ${{ github.event_name == 'schedule' && steps.schedule_settings.outputs.should_publish == 'true' }}
         run: |
-          delay=$((0x$(printf '%s' "${{ steps.publication.outputs.date }}" | sha256sum | cut -c1-8) % (JITTER_MAX_MINUTES + 1)))
+          delay=$((0x$(printf '%s' "${{ steps.publication.outputs.date }}:${{ steps.schedule_settings.outputs.slot }}" | sha256sum | cut -c1-8) % (JITTER_MAX_MINUTES + 1)))
           echo "Scheduled jitter: ${delay} minutes"
           sleep "${delay}m"
 
       - name: Create publication preview
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
         run: |
           args=(
             --date "${{ steps.publication.outputs.date }}"
@@ -157,25 +216,27 @@ jobs:
           pnpm run publish:preview -- "${args[@]}"
 
       - name: Check generated files
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
         run: |
           pnpm run check:png -- output/post-palette.png
           pnpm run check:message -- output/post-message.txt
 
       - name: Telegram dry-run
-        if: ${{ steps.publication.outputs.dry_run == 'true' }}
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' && steps.publication.outputs.dry_run == 'true' }}
         run: >
           pnpm run publish:telegram:dry-run --
           --photo output/post-palette.png
           --message output/post-message.txt
 
       - name: Publish to Telegram
-        if: ${{ steps.publication.outputs.dry_run != 'true' }}
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' && steps.publication.outputs.dry_run != 'true' }}
         run: >
           pnpm run publish:telegram --
           --photo output/post-palette.png
           --message output/post-message.txt
 
       - name: Upload generated artifacts
+        if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: publication-${{ steps.publication.outputs.date }}
