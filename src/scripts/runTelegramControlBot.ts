@@ -121,7 +121,12 @@ while (true) {
 
   for (const update of updates) {
     offset = update.update_id + 1
-    await handleUpdate(config, drafts, update)
+
+    try {
+      await handleUpdate(config, drafts, update)
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Update failed.")
+    }
   }
 }
 
@@ -292,12 +297,20 @@ async function editPublishMenu(
   messageId: number,
   draft: PublishDraft,
 ) {
-  await callTelegramApi(botToken, "editMessageText", {
-    chat_id: chatId,
-    message_id: messageId,
-    text: renderDraft(draft),
-    reply_markup: createPublishKeyboard(draft),
-  })
+  try {
+    await callTelegramApi(botToken, "editMessageText", {
+      chat_id: chatId,
+      message_id: messageId,
+      text: renderDraft(draft),
+      reply_markup: createPublishKeyboard(draft),
+    })
+  } catch (error) {
+    if (isMessageNotModifiedError(error)) {
+      return
+    }
+
+    throw error
+  }
 }
 
 function renderDraft(draft: PublishDraft) {
@@ -437,6 +450,13 @@ async function callTelegramApi<T>(
   }
 
   return payload.result
+}
+
+function isMessageNotModifiedError(error: unknown) {
+  return (
+    error instanceof Error &&
+    error.message.includes("message is not modified")
+  )
 }
 
 async function loadControlBotConfig(envPath: string) {
