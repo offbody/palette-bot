@@ -131,6 +131,13 @@ For GitHub Actions, add these repository secrets:
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
 
+Manual GitHub Actions publishing:
+
+1. Open the `Publish` workflow in GitHub Actions.
+2. Click `Run workflow`.
+3. Keep `dry_run` enabled for the first check.
+4. Disable `dry_run` only when you want to publish to the Telegram channel.
+
 You can still override any decision:
 
 ```bash

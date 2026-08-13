@@ -1,0 +1,101 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: Publication date in YYYY-MM-DD format. Defaults to the run date.
+        required: false
+        type: string
+      dry_run:
+        description: Check Telegram access without publishing.
+        required: true
+        default: true
+        type: boolean
+      attempts:
+        description: Number of deterministic strategy attempts.
+        required: true
+        default: "16"
+        type: string
+      min_score:
+        description: Minimum acceptable palette score.
+        required: true
+        default: "70"
+        type: string
+
+jobs:
+  publish:
+    name: Publish Palette
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm run playwright:install:ci
+
+      - name: Resolve publication date
+        id: publication
+        run: |
+          if [ -n "${{ inputs.date }}" ]; then
+            echo "date=${{ inputs.date }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create publication preview
+        run: >
+          pnpm run publish:preview -- --date "${{ steps.publication.outputs.date }}"
+          --attempts "${{ inputs.attempts }}"
+          --min-score "${{ inputs.min_score }}"
+          --plan output/post-plan.json
+          --json output/post-palette.json
+          --png output/post-palette.png
+          --message output/post-message.txt
+
+      - name: Check generated files
+        run: |
+          pnpm run check:png -- output/post-palette.png
+          pnpm run check:message -- output/post-message.txt
+
+      - name: Telegram dry-run
+        if: ${{ inputs.dry_run }}
+        run: >
+          pnpm run publish:telegram:dry-run --
+          --photo output/post-palette.png
+          --message output/post-message.txt
+
+      - name: Publish to Telegram
+        if: ${{ !inputs.dry_run }}
+        run: >
+          pnpm run publish:telegram --
+          --photo output/post-palette.png
+          --message output/post-message.txt
+
+      - name: Upload generated artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: publication-${{ steps.publication.outputs.date }}
+          path: |
+            output/post-plan.json
+            output/post-palette.json
+            output/post-palette.png
+            output/post-message.txt
