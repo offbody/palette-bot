@@ -13,6 +13,7 @@ type ControlBotConfig = {
   githubToken: string
   githubRepository: string
   githubWorkflowId: string
+  githubAwwwardsWorkflowId: string
   githubRef: string
 }
 
@@ -30,13 +31,27 @@ type ScheduleDraft = {
   dayInterval: number
 }
 
+type AwwwardsDraft = {
+  dryRun: boolean
+  caseUrl: string
+  listingUrl: string
+  enrichFromScreenshot: boolean
+  maxColors: AwwwardsMaxColorsChoice
+}
+
+type PendingInput = {
+  type: "awwwards_case_url" | "awwwards_listing_url"
+}
+
 type MenuView =
+  | "source"
   | "main"
   | "quality"
   | "color_count"
   | "preset"
   | "harmony"
   | "schedule"
+  | "awwwards"
 
 type ActionResult = {
   notice?: string
@@ -48,6 +63,8 @@ type ColorCountChoice = "auto" | "1" | "2" | "3" | "4" | "5"
 type PresetChoice = "auto" | PalettePreset
 
 type HarmonyChoice = "auto" | PaletteHarmony
+
+type AwwwardsMaxColorsChoice = "1" | "2" | "3" | "4" | "5"
 
 type TelegramUpdate = {
   update_id: number
@@ -116,11 +133,21 @@ const colorCountChoices = [
   "5",
 ] as const satisfies readonly ColorCountChoice[]
 
+const awwwardsMaxColorsChoices = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+] as const satisfies readonly AwwwardsMaxColorsChoice[]
+
 const args = parseArgs(process.argv.slice(2))
 const envPath = path.resolve(args.env ?? ".secrets/control.env")
 const config = await loadControlBotConfig(envPath)
 const drafts = new Map<number, PublishDraft>()
 const scheduleDrafts = new Map<number, ScheduleDraft>()
+const awwwardsDrafts = new Map<number, AwwwardsDraft>()
+const pendingInputs = new Map<number, PendingInput>()
 
 let offset = 0
 console.log("Telegram control bot started.")
@@ -132,7 +159,14 @@ while (true) {
     offset = update.update_id + 1
 
     try {
-      await handleUpdate(config, drafts, scheduleDrafts, update)
+      await handleUpdate(
+        config,
+        drafts,
+        scheduleDrafts,
+        awwwardsDrafts,
+        pendingInputs,
+        update,
+      )
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Update failed.")
     }
@@ -143,15 +177,31 @@ async function handleUpdate(
   config: ControlBotConfig,
   drafts: Map<number, PublishDraft>,
   scheduleDrafts: Map<number, ScheduleDraft>,
+  awwwardsDrafts: Map<number, AwwwardsDraft>,
+  pendingInputs: Map<number, PendingInput>,
   update: TelegramUpdate,
 ) {
   if (update.message) {
-    await handleMessage(config, drafts, scheduleDrafts, update.message)
+    await handleMessage(
+      config,
+      drafts,
+      scheduleDrafts,
+      awwwardsDrafts,
+      pendingInputs,
+      update.message,
+    )
     return
   }
 
   if (update.callback_query) {
-    await handleCallbackQuery(config, drafts, scheduleDrafts, update.callback_query)
+    await handleCallbackQuery(
+      config,
+      drafts,
+      scheduleDrafts,
+      awwwardsDrafts,
+      pendingInputs,
+      update.callback_query,
+    )
   }
 }
 
@@ -159,6 +209,8 @@ async function handleMessage(
   config: ControlBotConfig,
   drafts: Map<number, PublishDraft>,
   scheduleDrafts: Map<number, ScheduleDraft>,
+  awwwardsDrafts: Map<number, AwwwardsDraft>,
+  pendingInputs: Map<number, PendingInput>,
   message: NonNullable<TelegramUpdate["message"]>,
 ) {
   const userId = message.from?.id
@@ -171,21 +223,71 @@ async function handleMessage(
     return
   }
 
+  const pendingInput = pendingInputs.get(userId)
+
+  if (pendingInput) {
+    const awwwardsDraft = getAwwwardsDraft(awwwardsDrafts, userId)
+    let notice: string
+
+    try {
+      notice = applyPendingInput(awwwardsDraft, pendingInput, message.text ?? "")
+      pendingInputs.delete(userId)
+    } catch (error) {
+      notice = error instanceof Error ? error.message : "Could not save URL."
+    }
+
+    await sendPublishMenu(
+      config.botToken,
+      message.chat.id,
+      getDraft(drafts, userId),
+      getScheduleDraft(scheduleDrafts, userId),
+      awwwardsDraft,
+      "awwwards",
+      notice,
+    )
+    return
+  }
+
   if (message.text === "/start" || message.text === "/publish") {
     const draft = getDraft(drafts, userId)
     const scheduleDraft = getScheduleDraft(scheduleDrafts, userId)
-    await sendPublishMenu(config.botToken, message.chat.id, draft, scheduleDraft)
+    const awwwardsDraft = getAwwwardsDraft(awwwardsDrafts, userId)
+    await sendPublishMenu(
+      config.botToken,
+      message.chat.id,
+      draft,
+      scheduleDraft,
+      awwwardsDraft,
+      "source",
+    )
+    return
+  }
+
+  if (message.text === "/awwwards") {
+    const draft = getDraft(drafts, userId)
+    const scheduleDraft = getScheduleDraft(scheduleDrafts, userId)
+    const awwwardsDraft = getAwwwardsDraft(awwwardsDrafts, userId)
+    await sendPublishMenu(
+      config.botToken,
+      message.chat.id,
+      draft,
+      scheduleDraft,
+      awwwardsDraft,
+      "awwwards",
+    )
     return
   }
 
   if (message.text === "/schedule") {
     const draft = getDraft(drafts, userId)
     const scheduleDraft = getScheduleDraft(scheduleDrafts, userId)
+    const awwwardsDraft = getAwwwardsDraft(awwwardsDrafts, userId)
     await sendPublishMenu(
       config.botToken,
       message.chat.id,
       draft,
       scheduleDraft,
+      awwwardsDraft,
       "schedule",
     )
     return
@@ -193,7 +295,7 @@ async function handleMessage(
 
   await sendMessage(config.botToken, {
     chatId: message.chat.id,
-    text: "Use /publish to open publishing controls or /schedule to open scheduled settings.",
+    text: "Use /publish to open publishing controls, /awwwards for Awwwards controls, or /schedule for Basic Palette scheduled settings.",
   })
 }
 
@@ -201,6 +303,8 @@ async function handleCallbackQuery(
   config: ControlBotConfig,
   drafts: Map<number, PublishDraft>,
   scheduleDrafts: Map<number, ScheduleDraft>,
+  awwwardsDrafts: Map<number, AwwwardsDraft>,
+  pendingInputs: Map<number, PendingInput>,
   callbackQuery: NonNullable<TelegramUpdate["callback_query"]>,
 ) {
   const message = callbackQuery.message
@@ -217,12 +321,23 @@ async function handleCallbackQuery(
 
   const draft = getDraft(drafts, callbackQuery.from.id)
   const scheduleDraft = getScheduleDraft(scheduleDrafts, callbackQuery.from.id)
+  const awwwardsDraft = getAwwwardsDraft(awwwardsDrafts, callbackQuery.from.id)
   const data = callbackQuery.data ?? ""
-  let view: MenuView = "main"
+  let view: MenuView = "source"
+  let messageNotice: string | undefined
 
   try {
-    const result = await applyAction(config, draft, scheduleDraft, data)
+    const result = await applyAction(
+      config,
+      draft,
+      scheduleDraft,
+      awwwardsDraft,
+      pendingInputs,
+      callbackQuery.from.id,
+      data,
+    )
     view = result.view
+    messageNotice = result.notice
     await answerCallbackQuery(config.botToken, callbackQuery.id, result.notice)
   } catch (error) {
     await answerCallbackQuery(
@@ -238,7 +353,9 @@ async function handleCallbackQuery(
     message.message_id,
     draft,
     scheduleDraft,
+    awwwardsDraft,
     view,
+    messageNotice,
   )
 }
 
@@ -246,10 +363,13 @@ async function applyAction(
   config: ControlBotConfig,
   draft: PublishDraft,
   scheduleDraft: ScheduleDraft,
+  awwwardsDraft: AwwwardsDraft,
+  pendingInputs: Map<number, PendingInput>,
+  userId: number,
   data: string,
 ): Promise<ActionResult> {
   if (data === "noop") {
-    return { view: "main" }
+    return { view: "source" }
   }
 
   if (data.startsWith("view:")) {
@@ -259,6 +379,55 @@ async function applyAction(
   if (data === "toggle:dry_run") {
     draft.dryRun = !draft.dryRun
     return { view: "main" }
+  }
+
+  if (data === "awwwards:toggle:dry_run") {
+    awwwardsDraft.dryRun = !awwwardsDraft.dryRun
+    return { view: "awwwards" }
+  }
+
+  if (data === "awwwards:toggle:enrich") {
+    awwwardsDraft.enrichFromScreenshot = !awwwardsDraft.enrichFromScreenshot
+    return { view: "awwwards" }
+  }
+
+  if (data.startsWith("awwwards:max_colors:")) {
+    awwwardsDraft.maxColors = parseAwwwardsMaxColorsChoice(
+      data.slice("awwwards:max_colors:".length),
+    )
+    return { view: "awwwards" }
+  }
+
+  if (data === "awwwards:set_case_url") {
+    pendingInputs.set(userId, { type: "awwwards_case_url" })
+    return {
+      notice: "Send the Awwwards case URL in the next message.",
+      view: "awwwards",
+    }
+  }
+
+  if (data === "awwwards:set_listing_url") {
+    pendingInputs.set(userId, { type: "awwwards_listing_url" })
+    return {
+      notice: "Send the Awwwards listing/category URL in the next message.",
+      view: "awwwards",
+    }
+  }
+
+  if (data === "awwwards:reset_case_url") {
+    awwwardsDraft.caseUrl = ""
+    return { notice: "Case URL reset.", view: "awwwards" }
+  }
+
+  if (data === "awwwards:reset_listing_url") {
+    awwwardsDraft.listingUrl = ""
+    return { notice: "Listing URL reset to SOTD.", view: "awwwards" }
+  }
+
+  if (data === "awwwards:reset_source") {
+    awwwardsDraft.caseUrl = ""
+    awwwardsDraft.listingUrl = ""
+    return { notice: "Awwwards source reset to default SOTD.", view: "awwwards" }
   }
 
   if (data === "attempts:-") {
@@ -385,6 +554,26 @@ async function applyAction(
     }
   }
 
+  if (data === "awwwards:run") {
+    await dispatchWorkflow({
+      token: config.githubToken,
+      repository: config.githubRepository,
+      workflowId: config.githubAwwwardsWorkflowId,
+      ref: config.githubRef,
+      inputs: {
+        dry_run: String(awwwardsDraft.dryRun),
+        case_url: awwwardsDraft.caseUrl,
+        listing_url: awwwardsDraft.listingUrl,
+        enrich_from_screenshot: String(awwwardsDraft.enrichFromScreenshot),
+        max_colors: awwwardsDraft.maxColors,
+      },
+    })
+    return {
+      notice: "Awwwards workflow dispatched.",
+      view: "awwwards",
+    }
+  }
+
   throw new Error("Unknown action.")
 }
 
@@ -393,12 +582,14 @@ async function sendPublishMenu(
   chatId: number,
   draft: PublishDraft,
   scheduleDraft: ScheduleDraft,
-  view: MenuView = "main",
+  awwwardsDraft: AwwwardsDraft,
+  view: MenuView = "source",
+  notice?: string,
 ) {
   await sendMessage(botToken, {
     chatId,
-    text: renderDraft(draft, scheduleDraft, view),
-    replyMarkup: createPublishKeyboard(draft, scheduleDraft, view),
+    text: renderDraft(draft, scheduleDraft, awwwardsDraft, view, notice),
+    replyMarkup: createPublishKeyboard(draft, scheduleDraft, awwwardsDraft, view),
   })
 }
 
@@ -408,14 +599,21 @@ async function editPublishMenu(
   messageId: number,
   draft: PublishDraft,
   scheduleDraft: ScheduleDraft,
+  awwwardsDraft: AwwwardsDraft,
   view: MenuView,
+  notice?: string,
 ) {
   try {
     await callTelegramApi(botToken, "editMessageText", {
       chat_id: chatId,
       message_id: messageId,
-      text: renderDraft(draft, scheduleDraft, view),
-      reply_markup: createPublishKeyboard(draft, scheduleDraft, view),
+      text: renderDraft(draft, scheduleDraft, awwwardsDraft, view, notice),
+      reply_markup: createPublishKeyboard(
+        draft,
+        scheduleDraft,
+        awwwardsDraft,
+        view,
+      ),
     })
   } catch (error) {
     if (isMessageNotModifiedError(error)) {
@@ -429,81 +627,143 @@ async function editPublishMenu(
 function renderDraft(
   draft: PublishDraft,
   scheduleDraft: ScheduleDraft,
+  awwwardsDraft: AwwwardsDraft,
   view: MenuView,
+  notice?: string,
 ) {
+  if (view === "source") {
+    return withNotice(
+      [
+        "Publication control",
+        "",
+        "Choose a publishing flow.",
+        "",
+        `Basic Palette: ${draft.dryRun ? "test / dry run" : "live publish"}`,
+        `Awwwards: ${awwwardsDraft.dryRun ? "test / dry run" : "live publish"}`,
+      ],
+      notice,
+    )
+  }
+
   if (view === "quality") {
-    return [
-      "Publish quality",
-      "",
-      `Minimum score: ${draft.minScore}`,
-      `Strategy attempts: ${draft.attempts}`,
-      "",
-      "Higher score is stricter. More attempts gives the generator more chances to find a matching palette.",
-    ].join("\n")
+    return withNotice(
+      [
+        "Publish quality",
+        "",
+        `Minimum score: ${draft.minScore}`,
+        `Strategy attempts: ${draft.attempts}`,
+        "",
+        "Higher score is stricter. More attempts gives the generator more chances to find a matching palette.",
+      ],
+      notice,
+    )
   }
 
   if (view === "color_count") {
-    return [
-      "Color count",
-      "",
-      `Current: ${draft.colorCount}`,
-      "",
-      "Auto chooses 2-5 colors for scheduled-style generation. Choose 1-5 when you want an exact count.",
-    ].join("\n")
+    return withNotice(
+      [
+        "Color count",
+        "",
+        `Current: ${draft.colorCount}`,
+        "",
+        "Auto chooses 2-5 colors for scheduled-style generation. Choose 1-5 when you want an exact count.",
+      ],
+      notice,
+    )
   }
 
   if (view === "preset") {
-    return [
-      "Palette preset",
-      "",
-      `Current: ${draft.preset}`,
-      "",
-      "Preset controls the overall visual character of the palette.",
-    ].join("\n")
+    return withNotice(
+      [
+        "Palette preset",
+        "",
+        `Current: ${draft.preset}`,
+        "",
+        "Preset controls the overall visual character of the palette.",
+      ],
+      notice,
+    )
   }
 
   if (view === "harmony") {
-    return [
-      "Harmony mode",
-      "",
-      `Current: ${draft.harmony}`,
-      "",
-      draft.preset === "auto"
-        ? "Harmony controls the relationship between colors."
-        : `Showing modes supported by ${draft.preset}.`,
-    ].join("\n")
+    return withNotice(
+      [
+        "Harmony mode",
+        "",
+        `Current: ${draft.harmony}`,
+        "",
+        draft.preset === "auto"
+          ? "Harmony controls the relationship between colors."
+          : `Showing modes supported by ${draft.preset}.`,
+      ],
+      notice,
+    )
   }
 
   if (view === "schedule") {
-    return [
-      "Scheduled publishing",
-      "",
-      `Posts per day: ${scheduleDraft.postsPerDay}`,
-      `Day interval: every ${scheduleDraft.dayInterval} day${scheduleDraft.dayInterval === 1 ? "" : "s"}`,
-      "",
-      "Save sends these settings to GitHub repository variables.",
-    ].join("\n")
+    return withNotice(
+      [
+        "Scheduled publishing",
+        "",
+        `Posts per day: ${scheduleDraft.postsPerDay}`,
+        `Day interval: every ${scheduleDraft.dayInterval} day${scheduleDraft.dayInterval === 1 ? "" : "s"}`,
+        "",
+        "Save sends these settings to GitHub repository variables.",
+      ],
+      notice,
+    )
   }
 
-  return [
-    "Publish control",
-    "",
-    `Mode: ${draft.dryRun ? "test / dry run" : "live publish"}`,
-    `Quality: score ${draft.minScore}, ${draft.attempts} attempts`,
-    `Colors: ${draft.colorCount}`,
-    `Preset: ${draft.preset}`,
-    `Harmony: ${draft.harmony}`,
-    `Scheduled: ${scheduleDraft.postsPerDay}/day, every ${scheduleDraft.dayInterval} day${scheduleDraft.dayInterval === 1 ? "" : "s"}`,
-    "",
-    "Open a section to adjust values, then run Publish.",
-  ].join("\n")
+  if (view === "awwwards") {
+    return withNotice(
+      [
+        "Awwwards publishing",
+        "",
+        `Mode: ${awwwardsDraft.dryRun ? "test / dry run" : "live publish"}`,
+        `Source: ${formatAwwwardsSource(awwwardsDraft)}`,
+        `Case URL: ${formatOptionalUrl(awwwardsDraft.caseUrl)}`,
+        `Listing URL: ${formatOptionalUrl(awwwardsDraft.listingUrl)}`,
+        `Screenshot colors: ${awwwardsDraft.enrichFromScreenshot ? "on" : "off"}`,
+        `Max colors: ${awwwardsDraft.maxColors}`,
+        "",
+        "Direct case URL has priority. Listing/category URL is used to find the latest item from that page.",
+      ],
+      notice,
+    )
+  }
+
+  return withNotice(
+    [
+      "Basic Palette publishing",
+      "",
+      `Mode: ${draft.dryRun ? "test / dry run" : "live publish"}`,
+      `Quality: score ${draft.minScore}, ${draft.attempts} attempts`,
+      `Colors: ${draft.colorCount}`,
+      `Preset: ${draft.preset}`,
+      `Harmony: ${draft.harmony}`,
+      `Scheduled: ${scheduleDraft.postsPerDay}/day, every ${scheduleDraft.dayInterval} day${scheduleDraft.dayInterval === 1 ? "" : "s"}`,
+      "",
+      "Open a section to adjust values, then run Publish.",
+    ],
+    notice,
+  )
 }
 
 function createPublishKeyboard(
   draft: PublishDraft,
   scheduleDraft: ScheduleDraft,
+  awwwardsDraft: AwwwardsDraft,
   view: MenuView,
 ) {
+  if (view === "source") {
+    return {
+      inline_keyboard: [
+        [{ text: "Basic Palette", callback_data: "view:main" }],
+        [{ text: "Awwwards", callback_data: "view:awwwards" }],
+      ],
+    }
+  }
+
   if (view === "quality") {
     return {
       inline_keyboard: [
@@ -593,6 +853,52 @@ function createPublishKeyboard(
     }
   }
 
+  if (view === "awwwards") {
+    return {
+      inline_keyboard: [
+        [
+          {
+            text: `dry_run: ${awwwardsDraft.dryRun ? "on" : "off"}`,
+            callback_data: "awwwards:toggle:dry_run",
+          },
+        ],
+        [
+          { text: "Set case URL", callback_data: "awwwards:set_case_url" },
+          { text: "Clear case", callback_data: "awwwards:reset_case_url" },
+        ],
+        [
+          {
+            text: "Set listing URL",
+            callback_data: "awwwards:set_listing_url",
+          },
+          {
+            text: "Reset to SOTD",
+            callback_data: "awwwards:reset_listing_url",
+          },
+        ],
+        [
+          {
+            text: `screenshot colors: ${awwwardsDraft.enrichFromScreenshot ? "on" : "off"}`,
+            callback_data: "awwwards:toggle:enrich",
+          },
+        ],
+        ...chunk(
+          awwwardsMaxColorsChoices.map((maxColors) => ({
+            text:
+              maxColors === awwwardsDraft.maxColors
+                ? `* ${maxColors}`
+                : maxColors,
+            callback_data: `awwwards:max_colors:${maxColors}`,
+          })),
+          5,
+        ),
+        [{ text: "Reset source", callback_data: "awwwards:reset_source" }],
+        [{ text: "Run Awwwards", callback_data: "awwwards:run" }],
+        [{ text: "Back to menu", callback_data: "view:source" }],
+      ],
+    }
+  }
+
   return {
     inline_keyboard: [
       [
@@ -611,6 +917,7 @@ function createPublishKeyboard(
       [{ text: `Harmony: ${draft.harmony}`, callback_data: "view:harmony" }],
       [{ text: "Scheduled", callback_data: "view:schedule" }],
       [{ text: "Run Publish", callback_data: "run" }],
+      [{ text: "Back to menu", callback_data: "view:source" }],
     ],
   }
 }
@@ -650,6 +957,28 @@ function getScheduleDraft(
     dayInterval: 1,
   } satisfies ScheduleDraft
   scheduleDrafts.set(userId, draft)
+
+  return draft
+}
+
+function getAwwwardsDraft(
+  awwwardsDrafts: Map<number, AwwwardsDraft>,
+  userId: number,
+) {
+  const existingDraft = awwwardsDrafts.get(userId)
+
+  if (existingDraft) {
+    return existingDraft
+  }
+
+  const draft = {
+    dryRun: true,
+    caseUrl: "",
+    listingUrl: "",
+    enrichFromScreenshot: true,
+    maxColors: "5",
+  } satisfies AwwwardsDraft
+  awwwardsDrafts.set(userId, draft)
 
   return draft
 }
@@ -734,6 +1063,10 @@ async function loadControlBotConfig(envPath: string) {
     process.env.GITHUB_WORKFLOW_ID ??
     fileEnv.GITHUB_WORKFLOW_ID ??
     "publish.yml"
+  const githubAwwwardsWorkflowId =
+    process.env.GITHUB_AWWWARDS_WORKFLOW_ID ??
+    fileEnv.GITHUB_AWWWARDS_WORKFLOW_ID ??
+    "publish-awwwards.yml"
   const githubRef = process.env.GITHUB_REF ?? fileEnv.GITHUB_REF ?? "main"
 
   if (!botToken) {
@@ -754,6 +1087,7 @@ async function loadControlBotConfig(envPath: string) {
     githubToken,
     githubRepository,
     githubWorkflowId,
+    githubAwwwardsWorkflowId,
     githubRef,
   } satisfies ControlBotConfig
 }
@@ -829,12 +1163,14 @@ function parseAdminUserIds(value: string) {
 
 function parseMenuView(value: string): MenuView {
   if (
+    value === "source" ||
     value === "main" ||
     value === "quality" ||
     value === "color_count" ||
     value === "preset" ||
     value === "harmony" ||
-    value === "schedule"
+    value === "schedule" ||
+    value === "awwwards"
   ) {
     return value
   }
@@ -864,6 +1200,112 @@ function parseHarmonyChoice(value: string): HarmonyChoice {
   }
 
   throw new Error(`Unknown harmony: ${value}`)
+}
+
+function parseAwwwardsMaxColorsChoice(value: string): AwwwardsMaxColorsChoice {
+  if (awwwardsMaxColorsChoices.includes(value as AwwwardsMaxColorsChoice)) {
+    return value as AwwwardsMaxColorsChoice
+  }
+
+  throw new Error(`Unknown Awwwards max colors: ${value}`)
+}
+
+function applyPendingInput(
+  draft: AwwwardsDraft,
+  pendingInput: PendingInput,
+  rawValue: string,
+) {
+  if (pendingInput.type === "awwwards_case_url") {
+    draft.caseUrl = normalizeAwwwardsCaseUrl(rawValue)
+
+    if (draft.caseUrl) {
+      draft.listingUrl = ""
+      return "Case URL saved. Listing URL cleared."
+    }
+
+    return "Case URL cleared."
+  }
+
+  draft.listingUrl = normalizeAwwwardsListingUrl(rawValue)
+
+  if (draft.listingUrl) {
+    draft.caseUrl = ""
+    return "Listing URL saved. Case URL cleared."
+  }
+
+  return "Listing URL reset to default SOTD."
+}
+
+function normalizeAwwwardsCaseUrl(rawValue: string) {
+  const url = normalizeOptionalAwwwardsUrl(rawValue)
+
+  if (!url) {
+    return ""
+  }
+
+  if (!new URL(url).pathname.startsWith("/sites/")) {
+    throw new Error("Case URL should look like https://www.awwwards.com/sites/...")
+  }
+
+  return url
+}
+
+function normalizeAwwwardsListingUrl(rawValue: string) {
+  return normalizeOptionalAwwwardsUrl(rawValue)
+}
+
+function normalizeOptionalAwwwardsUrl(rawValue: string) {
+  const trimmedValue = rawValue.trim()
+
+  if (
+    trimmedValue.length === 0 ||
+    trimmedValue === "-" ||
+    trimmedValue.toLowerCase() === "default"
+  ) {
+    return ""
+  }
+
+  let url: URL
+
+  try {
+    url = new URL(trimmedValue)
+  } catch {
+    throw new Error("Send a valid URL or `default` to reset.")
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("Use an http or https URL.")
+  }
+
+  if (!url.hostname.endsWith("awwwards.com")) {
+    throw new Error("Use an Awwwards URL.")
+  }
+
+  return url.toString()
+}
+
+function formatAwwwardsSource(draft: AwwwardsDraft) {
+  if (draft.caseUrl) {
+    return "direct case URL"
+  }
+
+  if (draft.listingUrl) {
+    return "listing/category URL"
+  }
+
+  return "default SOTD"
+}
+
+function formatOptionalUrl(value: string) {
+  return value || "default"
+}
+
+function withNotice(lines: string[], notice?: string) {
+  if (!notice) {
+    return lines.join("\n")
+  }
+
+  return [`Notice: ${notice}`, "", ...lines].join("\n")
 }
 
 function getHarmonyChoicesForDraft(draft: PublishDraft): readonly HarmonyChoice[] {
