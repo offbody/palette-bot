@@ -151,7 +151,7 @@ function createTechnicalPaletteHtml(palette: Palette) {
         margin: 0;
         font-size: 86px;
         line-height: 0.95;
-        font-weight: 760;
+        font-weight: 400;
         letter-spacing: 0;
       }
 
@@ -310,7 +310,7 @@ async function createFigmaPaletteHtml(palette: Palette) {
         color: #474f7a;
         font-size: 40px;
         line-height: normal;
-        font-weight: 700;
+        font-weight: 400;
         letter-spacing: 0;
         white-space: nowrap;
       }
