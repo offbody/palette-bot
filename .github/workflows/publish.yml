@@ -24,6 +24,33 @@ on:
         required: true
         default: "70"
         type: string
+      preset:
+        description: Palette preset. Use auto for deterministic selection.
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - ui-soft
+          - editorial-bold
+          - minimal-neutral
+          - brand-vivid
+          - dark-interface
+      harmony:
+        description: Harmony mode. Use auto for a preset-compatible choice.
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - analogous
+          - complementary
+          - triadic
+          - monochrome
+          - warm
+          - cool
+          - muted
+          - vivid
 
 jobs:
   publish:
@@ -69,11 +96,15 @@ jobs:
             echo "dry_run=false" >> "$GITHUB_OUTPUT"
             echo "attempts=16" >> "$GITHUB_OUTPUT"
             echo "min_score=70" >> "$GITHUB_OUTPUT"
+            echo "preset=auto" >> "$GITHUB_OUTPUT"
+            echo "harmony=auto" >> "$GITHUB_OUTPUT"
             echo "seed=post:${publication_date}" >> "$GITHUB_OUTPUT"
           else
             echo "dry_run=${{ inputs.dry_run }}" >> "$GITHUB_OUTPUT"
             echo "attempts=${{ inputs.attempts }}" >> "$GITHUB_OUTPUT"
             echo "min_score=${{ inputs.min_score }}" >> "$GITHUB_OUTPUT"
+            echo "preset=${{ inputs.preset }}" >> "$GITHUB_OUTPUT"
+            echo "harmony=${{ inputs.harmony }}" >> "$GITHUB_OUTPUT"
             echo "seed=manual:${publication_date}:${{ github.run_id }}:${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
           fi
 
@@ -85,15 +116,27 @@ jobs:
           sleep "${delay}m"
 
       - name: Create publication preview
-        run: >
-          pnpm run publish:preview -- --date "${{ steps.publication.outputs.date }}"
-          --seed "${{ steps.publication.outputs.seed }}"
-          --attempts "${{ steps.publication.outputs.attempts }}"
-          --min-score "${{ steps.publication.outputs.min_score }}"
-          --plan output/post-plan.json
-          --json output/post-palette.json
-          --png output/post-palette.png
-          --message output/post-message.txt
+        run: |
+          args=(
+            --date "${{ steps.publication.outputs.date }}"
+            --seed "${{ steps.publication.outputs.seed }}"
+            --attempts "${{ steps.publication.outputs.attempts }}"
+            --min-score "${{ steps.publication.outputs.min_score }}"
+            --plan output/post-plan.json
+            --json output/post-palette.json
+            --png output/post-palette.png
+            --message output/post-message.txt
+          )
+
+          if [ "${{ steps.publication.outputs.preset }}" != "auto" ]; then
+            args+=(--preset "${{ steps.publication.outputs.preset }}")
+          fi
+
+          if [ "${{ steps.publication.outputs.harmony }}" != "auto" ]; then
+            args+=(--harmony "${{ steps.publication.outputs.harmony }}")
+          fi
+
+          pnpm run publish:preview -- "${args[@]}"
 
       - name: Check generated files
         run: |
