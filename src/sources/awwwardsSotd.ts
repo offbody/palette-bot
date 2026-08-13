@@ -198,23 +198,12 @@ export function createAwwwardsSotdMessage(
   source: AwwwardsSotdSource,
   palette: Palette,
 ) {
-  const lines = [
-    `<b>${escapeHtml(normalizeWhitespace(source.title))}</b>`,
-    source.caseType === "site_of_the_day"
-      ? "Awwwards Site of the Day"
-      : "Awwwards Nominee",
-  ]
-
-  if (source.awardDate) {
-    lines.push(escapeHtml(source.awardDate))
-  }
-
+  const lines = [`<b>${escapeHtml(normalizeWhitespace(source.title))}</b>`]
   lines.push("")
   lines.push(...palette.colors.map(formatColorLine))
-  lines.push("")
-  lines.push(`Source: ${formatLink(source.caseUrl, "Awwwards")}`)
 
   if (source.websiteUrl) {
+    lines.push("")
     lines.push(`Website: ${formatLink(source.websiteUrl, "Visit site")}`)
   }
 

@@ -65,6 +65,12 @@ if (!message.includes("#000000") || !message.includes("#D71E1E")) {
   throw new Error(`Awwwards message colors are missing: ${message}`)
 }
 
+for (const removedLine of ["Awwwards Site of the Day", "Aug 13, 2026", "Source:"]) {
+  if (message.includes(removedLine)) {
+    throw new Error(`Awwwards message contains removed line ${removedLine}: ${message}`)
+  }
+}
+
 const nomineeColors = mergePaletteColors(
   [],
   ["#FAFAFA", "#111827", "#2563EB", "#2564EA"],
@@ -84,8 +90,8 @@ const nomineeMessage = createAwwwardsSotdMessage(nomineeSource, nomineePalette)
 
 assertEqual(nomineeColors.join(","), "#FAFAFA,#111827,#2563EB")
 
-if (!nomineeMessage.includes("Awwwards Nominee")) {
-  throw new Error(`Awwwards nominee message type is missing: ${nomineeMessage}`)
+if (nomineeMessage.includes("Awwwards Nominee")) {
+  throw new Error(`Awwwards nominee message contains removed type line: ${nomineeMessage}`)
 }
 
 console.log(
