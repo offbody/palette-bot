@@ -140,12 +140,24 @@ Manual GitHub Actions publishing:
 4. Keep `color_count`, `preset`, and `harmony` set to `auto` for deterministic selection, or choose values manually from the dropdowns.
 5. Disable `dry_run` only when you want to publish to the Telegram channel.
 
-Scheduled GitHub Actions publishing has five daily UTC slots: 09:00, 10:30, 12:00, 13:30, and 15:00. Repository variables control how many of those slots publish and how often posting days occur:
+Scheduled GitHub Actions publishing has nine daily candidate UTC slots:
+
+- 07:00
+- 08:30
+- 10:00
+- 11:30
+- 13:00
+- 14:30
+- 16:00
+- 17:30
+- 19:00
+
+Repository variables control how many of those candidate slots publish and how often posting days occur:
 
 - `SCHEDULE_POSTS_PER_DAY`, default `1`, range 1 to 5
 - `SCHEDULE_DAY_INTERVAL`, default `1`, range 1 to 30
 
-Each active scheduled slot applies a deterministic 0 to 70 minute delay before publishing. Manual runs do not wait.
+For each posting day, the workflow deterministically selects the configured number of active slots from the nine candidates. This means `SCHEDULE_POSTS_PER_DAY=3` does not always use the first three slots; the active times can vary by date while staying reproducible. Each active scheduled slot applies a deterministic 0 to 70 minute delay before publishing. Manual runs do not wait.
 
 Scheduled runs use a date-based seed, so each calendar day is reproducible. Manual runs use a run-based seed, so repeated manual publishes on the same day produce different palettes.
 

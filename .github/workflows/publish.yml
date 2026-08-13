@@ -2,11 +2,15 @@ name: Publish
 
 on:
   schedule:
-    - cron: "0 9 * * *"
-    - cron: "30 10 * * *"
-    - cron: "0 12 * * *"
-    - cron: "30 13 * * *"
-    - cron: "0 15 * * *"
+    - cron: "0 7 * * *"
+    - cron: "30 8 * * *"
+    - cron: "0 10 * * *"
+    - cron: "30 11 * * *"
+    - cron: "0 13 * * *"
+    - cron: "30 14 * * *"
+    - cron: "0 16 * * *"
+    - cron: "30 17 * * *"
+    - cron: "0 19 * * *"
   workflow_dispatch:
     inputs:
       date:
@@ -87,17 +91,23 @@ jobs:
         run: |
           should_publish=true
           slot=1
+          active_slots="manual"
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
             case "${{ github.event.schedule }}" in
-              "0 9 * * *") slot=1 ;;
-              "30 10 * * *") slot=2 ;;
-              "0 12 * * *") slot=3 ;;
-              "30 13 * * *") slot=4 ;;
-              "0 15 * * *") slot=5 ;;
+              "0 7 * * *") slot=1 ;;
+              "30 8 * * *") slot=2 ;;
+              "0 10 * * *") slot=3 ;;
+              "30 11 * * *") slot=4 ;;
+              "0 13 * * *") slot=5 ;;
+              "30 14 * * *") slot=6 ;;
+              "0 16 * * *") slot=7 ;;
+              "30 17 * * *") slot=8 ;;
+              "0 19 * * *") slot=9 ;;
               *) slot=1 ;;
             esac
 
+            publication_date="$(date -u +%F)"
             posts_per_day="${SCHEDULE_POSTS_PER_DAY}"
             day_interval="${SCHEDULE_DAY_INTERVAL}"
 
@@ -116,17 +126,24 @@ jobs:
 
             day_index=$((($(date -u +%s) / 86400)))
 
-            if [ "${slot}" -gt "${posts_per_day}" ]; then
-              should_publish=false
-            fi
+            active_slots="$(for candidate_slot in 1 2 3 4 5 6 7 8 9; do
+              hash="$(printf '%s' "${publication_date}:${posts_per_day}:slot:${candidate_slot}" | sha256sum | cut -c1-12)"
+              printf '%s %s\n' "${hash}" "${candidate_slot}"
+            done | sort | head -n "${posts_per_day}" | awk '{print $2}' | sort -n | paste -sd ',' -)"
 
             if [ $((day_index % day_interval)) -ne 0 ]; then
               should_publish=false
             fi
+
+            case ",${active_slots}," in
+              *",${slot},"*) ;;
+              *) should_publish=false ;;
+            esac
           fi
 
           echo "should_publish=${should_publish}" >> "$GITHUB_OUTPUT"
           echo "slot=${slot}" >> "$GITHUB_OUTPUT"
+          echo "active_slots=${active_slots}" >> "$GITHUB_OUTPUT"
 
       - name: Check out repository
         if: ${{ steps.schedule_settings.outputs.should_publish == 'true' }}
