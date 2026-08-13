@@ -90,13 +90,15 @@ The publication strategy picks the post inputs from a date-based seed:
 - harmony mode
 - candidate batch size tuned by preset
 - renderer theme, currently `figma` by default
-- Telegram-ready message text with color names and hex codes
+- Telegram-ready message text with a bold palette title, color names, and hex codes
 
-The selection is pseudo-random but repeatable. The same date or seed produces the same post plan, which keeps scheduled runs debuggable and reproducible. The preview command can test several strategy attempts and keeps the strongest plan above the minimum score.
+The selection is pseudo-random but repeatable. The same date or seed produces the same post plan, which keeps scheduled runs debuggable and reproducible. Auto color count is fixed per post seed, so strategy attempts can improve the palette without always drifting toward the same color count. The preview command can test several strategy attempts and keeps the strongest plan above the minimum score.
 
 Post message format:
 
 ```text
+<b>Lucid Spectrum</b>
+
 Linen #FDF0D8
 Dust #A5D3FF
 Coral #BFA431
@@ -142,7 +144,7 @@ Scheduled GitHub Actions publishing runs daily at 09:00 UTC. It applies a determ
 
 Scheduled runs use a date-based seed, so each calendar day is reproducible. Manual runs use a run-based seed, so repeated manual publishes on the same day produce different palettes.
 
-`color_count=auto` uses the publication strategy range of 2 to 5 colors. Choose `1` manually when you want a single-color post.
+`color_count=auto` deterministically varies across 2 to 5 colors from post to post. Choose `1` manually when you want a single-color post.
 
 You can still override any decision:
 

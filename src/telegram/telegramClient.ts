@@ -41,6 +41,7 @@ export async function sendTelegramPhoto(options: {
 
   formData.set("chat_id", options.config.chatId)
   formData.set("caption", options.caption)
+  formData.set("parse_mode", "HTML")
   formData.set("photo", new Blob([photo]), path.basename(options.photoPath))
 
   return callTelegramApi<TelegramMessage>(

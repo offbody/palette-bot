@@ -47,6 +47,24 @@ if (colorCounts.size < 4) {
   )
 }
 
+const colorCountsAcrossAttempts = new Set<number>()
+
+for (let strategyAttempt = 1; strategyAttempt <= 32; strategyAttempt += 1) {
+  colorCountsAcrossAttempts.add(
+    createPublicationPlan({
+      date: "2026-08-13",
+      seed: "manual:2026-08-13:ci-run:1",
+      strategyAttempt,
+    }).colorCount,
+  )
+}
+
+if (colorCountsAcrossAttempts.size !== 1) {
+  throw new Error(
+    "Auto color count should stay stable across strategy attempts for one post.",
+  )
+}
+
 const overridePlan = createPublicationPlan({
   date: "2026-08-13",
   colorCount: 5,

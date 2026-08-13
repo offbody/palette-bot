@@ -26,10 +26,10 @@ type WeightedOption<T> = {
 }
 
 const colorCountWeights = [
-  { value: 2, weight: 8 },
+  { value: 2, weight: 26 },
   { value: 3, weight: 22 },
-  { value: 4, weight: 34 },
-  { value: 5, weight: 36 },
+  { value: 4, weight: 26 },
+  { value: 5, weight: 26 },
 ] as const satisfies readonly WeightedOption<number>[]
 
 const presetWeights = [
@@ -63,7 +63,9 @@ export function createPublicationPlan(
       ? baseSeed
       : `${baseSeed}:strategy-${strategyAttempt}`
   const random = createRandom(`${baseSeed}:publication-plan:${strategyAttempt}`)
-  const colorCount = options.colorCount ?? pickWeighted(colorCountWeights, random)
+  const colorCountRandom = createRandom(`${baseSeed}:publication-color-count`)
+  const colorCount =
+    options.colorCount ?? pickWeighted(colorCountWeights, colorCountRandom)
   validateColorCount(colorCount)
 
   const requestedPreset = options.preset

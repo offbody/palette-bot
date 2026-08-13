@@ -12,8 +12,12 @@ const FIGMA_PALETTE_GAP = 24
 const INTER_FONT_PATH = path.resolve(
   "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
 )
+const DARKER_GROTESQUE_FONT_PATH = path.resolve(
+  "node_modules/@fontsource/darker-grotesque/files/darker-grotesque-latin-800-normal.woff2",
+)
 
 let interFontFaceCss: string | undefined
+let darkerGrotesqueFontFaceCss: string | undefined
 
 export type RenderPaletteTheme = "technical" | "figma"
 
@@ -256,14 +260,14 @@ async function createTechnicalPaletteHtml(palette: Palette) {
 }
 
 async function createFigmaPaletteHtml(palette: Palette) {
-  const fontFaceCss = await readInterFontFaceCss()
+  const fontFaceCss = await readDarkerGrotesqueFontFaceCss()
   const logoDataUri = await readLogoDataUri()
   const colorItemWidth =
     (FIGMA_PALETTE_WIDTH - FIGMA_PALETTE_GAP * (palette.colors.length - 1)) /
     palette.colors.length
   const radius = Math.min(91, Math.round(colorItemWidth * 0.285))
-  const colorNameSize = palette.colors.length <= 3 ? 24 : 22
-  const colorCodeSize = palette.colors.length <= 3 ? 24 : 20
+  const colorNameSize = palette.colors.length <= 2 ? 44 : 40
+  const colorCodeSize = palette.colors.length <= 2 ? 44 : 40
   const columns = palette.colors
     .map(
       (color) => `
@@ -294,7 +298,7 @@ async function createFigmaPaletteHtml(palette: Palette) {
         margin: 0;
         background: #ffffff;
         color: #474f7a;
-        font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "Darker Grotesque", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
       .canvas {
@@ -318,9 +322,9 @@ async function createFigmaPaletteHtml(palette: Palette) {
       h1 {
         margin: 0;
         color: #474f7a;
-        font-size: 40px;
+        font-size: 56px;
         line-height: normal;
-        font-weight: 400;
+        font-weight: 800;
         letter-spacing: 0;
         white-space: nowrap;
       }
@@ -356,16 +360,16 @@ async function createFigmaPaletteHtml(palette: Palette) {
         color: #ffffff;
         font-size: ${colorNameSize}px;
         line-height: normal;
-        font-weight: 700;
+        font-weight: 800;
         text-align: center;
-        overflow-wrap: normal;
-        word-break: normal;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
 
       .colorItem {
         width: 100%;
         height: 593px;
-        padding: 0 24px;
+        padding: 0 32px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -380,7 +384,7 @@ async function createFigmaPaletteHtml(palette: Palette) {
         color: #474f7a;
         font-size: ${colorCodeSize}px;
         line-height: normal;
-        font-weight: 700;
+        font-weight: 800;
         word-break: break-word;
       }
     </style>
@@ -433,6 +437,25 @@ async function readInterFontFaceCss() {
   `
 
   return interFontFaceCss
+}
+
+async function readDarkerGrotesqueFontFaceCss() {
+  if (darkerGrotesqueFontFaceCss) {
+    return darkerGrotesqueFontFaceCss
+  }
+
+  const font = await readFile(DARKER_GROTESQUE_FONT_PATH)
+  darkerGrotesqueFontFaceCss = `
+    @font-face {
+      font-family: "Darker Grotesque";
+      src: url("data:font/woff2;base64,${font.toString("base64")}") format("woff2");
+      font-style: normal;
+      font-weight: 800;
+      font-display: block;
+    }
+  `
+
+  return darkerGrotesqueFontFaceCss
 }
 
 function getTechnicalTextColor(hex: string) {
