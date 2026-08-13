@@ -12,6 +12,7 @@ const HEX_PATTERN = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g
 export type AwwwardsSotdSource = {
   title: string
   awardDate?: string
+  caseType: "site_of_the_day" | "nominee"
   caseUrl: string
   websiteUrl?: string
   screenshotUrl: string
@@ -63,10 +64,6 @@ export async function fetchAwwwardsSotd(
         "SOTD / SCORE",
       ])
       const paletteColors = extractHexColors(paletteText)
-      const fallbackColors = [...document.querySelectorAll("a[href]")]
-        .map((anchor) => (anchor as HTMLAnchorElement).href)
-        .map((href) => decodeURIComponent(href))
-        .flatMap((href) => extractHexColors(href))
 
       const screenshotUrl = [...document.querySelectorAll("img")]
         .map((image) => ({
@@ -99,10 +96,11 @@ export async function fetchAwwwardsSotd(
       return {
         title,
         awardDate: bodyText.match(/Site of the Day\s*-\s*([A-Za-z]{3}\s+\d{1,2},\s+\d{4})/)?.[1],
+        caseType: paletteColors.length > 0 ? "site_of_the_day" : "nominee",
         caseUrl: resolvedCaseUrl,
         websiteUrl,
         screenshotUrl,
-        colors: [...new Set([...paletteColors, ...fallbackColors])],
+        colors: [...new Set(paletteColors)],
       }
 
       function extractSectionText(
@@ -154,6 +152,8 @@ export async function fetchAwwwardsSotd(
 
     return validateAwwwardsSotdSource({
       ...source,
+      caseType:
+        source.caseType === "site_of_the_day" ? "site_of_the_day" : "nominee",
       colors: normalizeHexColors(source.colors).slice(0, MAX_RENDERED_COLORS),
     })
   } finally {
@@ -200,7 +200,9 @@ export function createAwwwardsSotdMessage(
 ) {
   const lines = [
     `<b>${escapeHtml(normalizeWhitespace(source.title))}</b>`,
-    "Awwwards Site of the Day",
+    source.caseType === "site_of_the_day"
+      ? "Awwwards Site of the Day"
+      : "Awwwards Nominee",
   ]
 
   if (source.awardDate) {
@@ -257,10 +259,6 @@ function validateAwwwardsSotdSource(source: Partial<AwwwardsSotdSource>) {
 
   if (!source.screenshotUrl) {
     throw new Error("Awwwards SOTD screenshot URL is missing.")
-  }
-
-  if (!source.colors?.length) {
-    throw new Error("Awwwards SOTD color palette is missing.")
   }
 
   return source as AwwwardsSotdSource

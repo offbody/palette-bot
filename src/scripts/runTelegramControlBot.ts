@@ -34,13 +34,12 @@ type ScheduleDraft = {
 type AwwwardsDraft = {
   dryRun: boolean
   caseUrl: string
-  listingUrl: string
   enrichFromScreenshot: boolean
   maxColors: AwwwardsMaxColorsChoice
 }
 
 type PendingInput = {
-  type: "awwwards_case_url" | "awwwards_listing_url"
+  type: "awwwards_case_url"
 }
 
 type MenuView =
@@ -230,7 +229,7 @@ async function handleMessage(
     let notice: string
 
     try {
-      notice = applyPendingInput(awwwardsDraft, pendingInput, message.text ?? "")
+      notice = applyPendingInput(awwwardsDraft, message.text ?? "")
       pendingInputs.delete(userId)
     } catch (error) {
       notice = error instanceof Error ? error.message : "Could not save URL."
@@ -406,27 +405,8 @@ async function applyAction(
     }
   }
 
-  if (data === "awwwards:set_listing_url") {
-    pendingInputs.set(userId, { type: "awwwards_listing_url" })
-    return {
-      notice: "Send the Awwwards listing/category URL in the next message.",
-      view: "awwwards",
-    }
-  }
-
   if (data === "awwwards:reset_case_url") {
     awwwardsDraft.caseUrl = ""
-    return { notice: "Case URL reset.", view: "awwwards" }
-  }
-
-  if (data === "awwwards:reset_listing_url") {
-    awwwardsDraft.listingUrl = ""
-    return { notice: "Listing URL reset to SOTD.", view: "awwwards" }
-  }
-
-  if (data === "awwwards:reset_source") {
-    awwwardsDraft.caseUrl = ""
-    awwwardsDraft.listingUrl = ""
     return { notice: "Awwwards source reset to default SOTD.", view: "awwwards" }
   }
 
@@ -563,7 +543,6 @@ async function applyAction(
       inputs: {
         dry_run: String(awwwardsDraft.dryRun),
         case_url: awwwardsDraft.caseUrl,
-        listing_url: awwwardsDraft.listingUrl,
         enrich_from_screenshot: String(awwwardsDraft.enrichFromScreenshot),
         max_colors: awwwardsDraft.maxColors,
       },
@@ -721,12 +700,11 @@ function renderDraft(
         "",
         `Mode: ${awwwardsDraft.dryRun ? "test / dry run" : "live publish"}`,
         `Source: ${formatAwwwardsSource(awwwardsDraft)}`,
-        `Case URL: ${formatOptionalUrl(awwwardsDraft.caseUrl)}`,
-        `Listing URL: ${formatOptionalUrl(awwwardsDraft.listingUrl)}`,
+        `URL: ${formatOptionalUrl(awwwardsDraft.caseUrl)}`,
         `Screenshot colors: ${awwwardsDraft.enrichFromScreenshot ? "on" : "off"}`,
         `Max colors: ${awwwardsDraft.maxColors}`,
         "",
-        "Direct case URL has priority. Listing/category URL is used to find the latest item from that page.",
+        "Manual URL can be a SOTD winner case or a nominee case. If no official Color Palette block is found, colors are extracted from the screenshot.",
       ],
       notice,
     )
@@ -863,18 +841,8 @@ function createPublishKeyboard(
           },
         ],
         [
-          { text: "Set case URL", callback_data: "awwwards:set_case_url" },
-          { text: "Clear case", callback_data: "awwwards:reset_case_url" },
-        ],
-        [
-          {
-            text: "Set listing URL",
-            callback_data: "awwwards:set_listing_url",
-          },
-          {
-            text: "Reset to SOTD",
-            callback_data: "awwwards:reset_listing_url",
-          },
+          { text: "Set URL", callback_data: "awwwards:set_case_url" },
+          { text: "Reset to SOTD", callback_data: "awwwards:reset_case_url" },
         ],
         [
           {
@@ -892,7 +860,6 @@ function createPublishKeyboard(
           })),
           5,
         ),
-        [{ text: "Reset source", callback_data: "awwwards:reset_source" }],
         [{ text: "Run Awwwards", callback_data: "awwwards:run" }],
         [{ text: "Back to menu", callback_data: "view:source" }],
       ],
@@ -974,7 +941,6 @@ function getAwwwardsDraft(
   const draft = {
     dryRun: true,
     caseUrl: "",
-    listingUrl: "",
     enrichFromScreenshot: true,
     maxColors: "5",
   } satisfies AwwwardsDraft
@@ -1212,28 +1178,15 @@ function parseAwwwardsMaxColorsChoice(value: string): AwwwardsMaxColorsChoice {
 
 function applyPendingInput(
   draft: AwwwardsDraft,
-  pendingInput: PendingInput,
   rawValue: string,
 ) {
-  if (pendingInput.type === "awwwards_case_url") {
-    draft.caseUrl = normalizeAwwwardsCaseUrl(rawValue)
+  draft.caseUrl = normalizeAwwwardsCaseUrl(rawValue)
 
-    if (draft.caseUrl) {
-      draft.listingUrl = ""
-      return "Case URL saved. Listing URL cleared."
-    }
-
-    return "Case URL cleared."
+  if (draft.caseUrl) {
+    return "Awwwards URL saved."
   }
 
-  draft.listingUrl = normalizeAwwwardsListingUrl(rawValue)
-
-  if (draft.listingUrl) {
-    draft.caseUrl = ""
-    return "Listing URL saved. Case URL cleared."
-  }
-
-  return "Listing URL reset to default SOTD."
+  return "Awwwards source reset to default SOTD."
 }
 
 function normalizeAwwwardsCaseUrl(rawValue: string) {
@@ -1248,10 +1201,6 @@ function normalizeAwwwardsCaseUrl(rawValue: string) {
   }
 
   return url
-}
-
-function normalizeAwwwardsListingUrl(rawValue: string) {
-  return normalizeOptionalAwwwardsUrl(rawValue)
 }
 
 function normalizeOptionalAwwwardsUrl(rawValue: string) {
@@ -1286,11 +1235,7 @@ function normalizeOptionalAwwwardsUrl(rawValue: string) {
 
 function formatAwwwardsSource(draft: AwwwardsDraft) {
   if (draft.caseUrl) {
-    return "direct case URL"
-  }
-
-  if (draft.listingUrl) {
-    return "listing/category URL"
+    return "manual case URL"
   }
 
   return "default SOTD"

@@ -39,6 +39,7 @@ assertEqual(enrichedColors.join(","), "#D71E1E,#1E4BD7,#181818,#F7F7F7")
 const source: AwwwardsSotdSource = {
   title: "Mosby's Files",
   awardDate: "Aug 13, 2026",
+  caseType: "site_of_the_day",
   caseUrl: "https://www.awwwards.com/sites/mosbys-files",
   websiteUrl: "https://www.mosbyfiles.com/",
   screenshotUrl:
@@ -62,6 +63,29 @@ if (!message.includes("<b>Mosby's Files</b>")) {
 
 if (!message.includes("#000000") || !message.includes("#D71E1E")) {
   throw new Error(`Awwwards message colors are missing: ${message}`)
+}
+
+const nomineeColors = mergePaletteColors(
+  [],
+  ["#FAFAFA", "#111827", "#2563EB", "#2564EA"],
+  {
+    maxColors: 3,
+  },
+)
+const nomineeSource: AwwwardsSotdSource = {
+  title: "Quiet Nominee",
+  caseType: "nominee",
+  caseUrl: "https://www.awwwards.com/sites/quiet-nominee",
+  screenshotUrl: "https://assets.awwwards.com/awards/submissions/example.png",
+  colors: nomineeColors,
+}
+const nomineePalette = createAwwwardsPalette(nomineeSource)
+const nomineeMessage = createAwwwardsSotdMessage(nomineeSource, nomineePalette)
+
+assertEqual(nomineeColors.join(","), "#FAFAFA,#111827,#2563EB")
+
+if (!nomineeMessage.includes("Awwwards Nominee")) {
+  throw new Error(`Awwwards nominee message type is missing: ${nomineeMessage}`)
 }
 
 console.log(

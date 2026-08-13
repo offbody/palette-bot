@@ -35,7 +35,6 @@ const maxColors = args["max-colors"]
 validateMaxColors(maxColors)
 
 const source = await fetchAwwwardsSotd({
-  listingUrl: args["listing-url"],
   caseUrl: args["case-url"],
 })
 
@@ -49,7 +48,7 @@ await Promise.all([
 
 await downloadAwwwardsScreenshot(source, screenshotPath)
 
-if (enrichFromScreenshot && source.colors.length < maxColors) {
+if (source.colors.length === 0 || (enrichFromScreenshot && source.colors.length < maxColors)) {
   const screenshotColors = await extractDominantColorsFromImage(screenshotPath, {
     maxColors: maxColors * 3,
   })
@@ -57,6 +56,10 @@ if (enrichFromScreenshot && source.colors.length < maxColors) {
   source.colors = mergePaletteColors(source.colors, screenshotColors, {
     maxColors,
   })
+}
+
+if (source.colors.length === 0) {
+  throw new Error("Could not extract Awwwards colors from the case or screenshot.")
 }
 
 const palette = createAwwwardsPalette(source)

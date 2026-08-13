@@ -1,4 +1,4 @@
-name: Publish Awwwards SOTD
+name: Publish Awwwards
 
 on:
   schedule:
@@ -11,11 +11,7 @@ on:
         default: true
         type: boolean
       case_url:
-        description: Optional direct Awwwards case URL, e.g. https://www.awwwards.com/sites/example
-        required: false
-        type: string
-      listing_url:
-        description: Optional Awwwards listing URL. Defaults to Sites of the Day.
+        description: Optional Awwwards case URL. Defaults to latest Site of the Day.
         required: false
         type: string
       enrich_from_screenshot:
@@ -37,7 +33,7 @@ on:
 
 jobs:
   publish-awwwards:
-    name: Publish Awwwards SOTD
+    name: Publish Awwwards
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -71,13 +67,11 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then
             echo "dry_run=false" >> "$GITHUB_OUTPUT"
             echo "case_url=" >> "$GITHUB_OUTPUT"
-            echo "listing_url=" >> "$GITHUB_OUTPUT"
             echo "enrich_from_screenshot=true" >> "$GITHUB_OUTPUT"
             echo "max_colors=5" >> "$GITHUB_OUTPUT"
           else
             echo "dry_run=${{ inputs.dry_run }}" >> "$GITHUB_OUTPUT"
             echo "case_url=${{ inputs.case_url }}" >> "$GITHUB_OUTPUT"
-            echo "listing_url=${{ inputs.listing_url }}" >> "$GITHUB_OUTPUT"
             echo "enrich_from_screenshot=${{ inputs.enrich_from_screenshot }}" >> "$GITHUB_OUTPUT"
             echo "max_colors=${{ inputs.max_colors }}" >> "$GITHUB_OUTPUT"
           fi
@@ -92,7 +86,6 @@ jobs:
       - name: Create Awwwards publication preview
         env:
           CASE_URL: ${{ steps.publication.outputs.case_url }}
-          LISTING_URL: ${{ steps.publication.outputs.listing_url }}
           ENRICH_FROM_SCREENSHOT: ${{ steps.publication.outputs.enrich_from_screenshot }}
           MAX_COLORS: ${{ steps.publication.outputs.max_colors }}
         run: |
@@ -109,10 +102,6 @@ jobs:
 
           if [ -n "${CASE_URL}" ]; then
             args+=(--case-url "${CASE_URL}")
-          fi
-
-          if [ -n "${LISTING_URL}" ]; then
-            args+=(--listing-url "${LISTING_URL}")
           fi
 
           pnpm run publish:awwwards:preview -- "${args[@]}"

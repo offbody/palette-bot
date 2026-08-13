@@ -199,11 +199,11 @@ Run the local control bot:
 pnpm run telegram:control -- --env .secrets/control.env
 ```
 
-Then send `/publish` to the bot. The inline keyboard opens a top-level menu with two publishing flows: `Basic Palette` and `Awwwards`. Basic Palette keeps separate sections for quality, color count, preset, harmony, and scheduled settings, then runs the GitHub Actions `Publish` workflow. Awwwards can run the separate `Publish Awwwards SOTD` workflow, toggle dry run mode, set a direct case URL, set a listing/category URL, reset the source to default SOTD, toggle screenshot color enrichment, and choose 1-5 max colors. Send `/schedule` to open Basic Palette scheduled settings directly. The scheduled settings menu saves `SCHEDULE_POSTS_PER_DAY` and `SCHEDULE_DAY_INTERVAL` to GitHub repository variables.
+Then send `/publish` to the bot. The inline keyboard opens a top-level menu with two publishing flows: `Basic Palette` and `Awwwards`. Basic Palette keeps separate sections for quality, color count, preset, harmony, and scheduled settings, then runs the GitHub Actions `Publish` workflow. Awwwards can run the separate `Publish Awwwards` workflow, toggle dry run mode, set one manual Awwwards case URL, reset the source to default SOTD, toggle screenshot color extraction, and choose 1-5 max colors. Send `/schedule` to open Basic Palette scheduled settings directly. The scheduled settings menu saves `SCHEDULE_POSTS_PER_DAY` and `SCHEDULE_DAY_INTERVAL` to GitHub repository variables.
 
 ## Step 4: Content Source Layer
 
-The Awwwards Site of the Day source layer builds a second post type without changing the base palette publication flow. It fetches the latest Awwwards SOTD case, extracts the `Color Palette` HEX values, downloads the Awwwards screenshot, enriches sparse official palettes with dominant screenshot colors, renders the extracted colors with the existing Figma palette renderer, and publishes both images to Telegram as a media group.
+The Awwwards source layer builds a second post type without changing the base palette publication flow. Scheduled publishing fetches the latest Awwwards SOTD case. Manual publishing can receive one Awwwards case URL. If the case has an official `Color Palette` block, those HEX values are used first. If the case has no official palette, the rendered palette is generated from the case screenshot. The workflow downloads the Awwwards screenshot, renders the extracted colors with the existing Figma palette renderer, and publishes both images to Telegram as a media group.
 
 Create a local Awwwards preview:
 
@@ -225,7 +225,7 @@ Test a specific Awwwards case:
 pnpm run publish:awwwards:preview -- --case-url https://www.awwwards.com/sites/mosbys-files
 ```
 
-Screenshot enrichment keeps Awwwards colors first and only adds visually dominant screenshot colors until the palette reaches `max-colors`, default `5`. Disable enrichment or lower the limit when testing:
+Screenshot extraction keeps official Awwwards colors first when they exist and adds visually dominant screenshot colors until the palette reaches `max-colors`, default `5`. If a manual nominee case has no official palette, screenshot colors are used even when enrichment is disabled. Disable enrichment or lower the limit when testing:
 
 ```bash
 pnpm run publish:awwwards:preview -- --enrich-from-screenshot false
@@ -239,7 +239,7 @@ pnpm run publish:telegram:dry-run -- --photos output/awwwards-sotd-screenshot.pn
 pnpm run publish:telegram -- --photos output/awwwards-sotd-screenshot.png,output/awwwards-sotd-palette.png --message output/awwwards-sotd-message.txt
 ```
 
-GitHub Actions has a separate `Publish Awwwards SOTD` workflow. Manual runs default to `dry_run=true` and can optionally receive a direct Awwwards `case_url`, a listing/category `listing_url`, toggle screenshot enrichment, and choose `max_colors` from 1 to 5. Scheduled runs execute daily at `16:00 UTC` / `19:00 MSK` with screenshot enrichment enabled, `max_colors=5`, and a deterministic 0 to 70 minute jitter.
+GitHub Actions has a separate `Publish Awwwards` workflow. Manual runs default to `dry_run=true` and can optionally receive one Awwwards `case_url`, toggle screenshot extraction, and choose `max_colors` from 1 to 5. Scheduled runs execute daily at `16:00 UTC` / `19:00 MSK` with screenshot extraction enabled, `max_colors=5`, and a deterministic 0 to 70 minute jitter.
 
 Check generator determinism and color validity:
 
