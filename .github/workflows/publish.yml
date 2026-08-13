@@ -17,7 +17,7 @@ on:
       attempts:
         description: Number of deterministic strategy attempts.
         required: true
-        default: "16"
+        default: "32"
         type: string
       min_score:
         description: Minimum acceptable palette score.
@@ -106,7 +106,7 @@ jobs:
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
             echo "dry_run=false" >> "$GITHUB_OUTPUT"
-            echo "attempts=16" >> "$GITHUB_OUTPUT"
+            echo "attempts=32" >> "$GITHUB_OUTPUT"
             echo "min_score=70" >> "$GITHUB_OUTPUT"
             echo "color_count=auto" >> "$GITHUB_OUTPUT"
             echo "preset=auto" >> "$GITHUB_OUTPUT"

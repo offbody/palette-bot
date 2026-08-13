@@ -10,8 +10,8 @@ import type {
 const MIN_COLORS = 1
 const MAX_COLORS = 5
 const DEFAULT_PRESET: PalettePreset = "ui-soft"
-const DEFAULT_CANDIDATE_COUNT = 24
-const MAX_CANDIDATE_COUNT = 96
+const DEFAULT_CANDIDATE_COUNT = 40
+const MAX_CANDIDATE_COUNT = 160
 
 export const palettePresets = [
   "ui-soft",
@@ -33,35 +33,256 @@ export const paletteHarmonies = [
 ] as const satisfies readonly PaletteHarmony[]
 
 const paletteAdjectives = [
-  "Quiet",
-  "Solar",
-  "Mineral",
-  "Velvet",
-  "Lucid",
-  "Signal",
-  "Drift",
+  "Amber",
+  "Analog",
+  "Arctic",
+  "Ashen",
+  "Astral",
+  "Bare",
+  "Beacon",
+  "Binary",
+  "Blended",
+  "Blooming",
+  "Brisk",
+  "Calm",
+  "Chromatic",
   "Cinder",
+  "Clear",
+  "Cloud",
+  "Coastal",
+  "Compact",
+  "Copper",
+  "Digital",
+  "Diffuse",
+  "Distant",
+  "Drift",
+  "Electric",
+  "Ember",
+  "Faint",
+  "Fluid",
+  "Frosted",
+  "Glass",
+  "Golden",
+  "Graphite",
+  "Grounded",
+  "Halo",
+  "Hidden",
+  "Ionic",
+  "Lateral",
+  "Linear",
+  "Lucid",
+  "Lunar",
+  "Magnetic",
+  "Mineral",
+  "Misty",
+  "Modern",
+  "Modular",
+  "Muted",
+  "Neon",
+  "Nocturne",
+  "Northern",
+  "Open",
+  "Optic",
+  "Pastel",
+  "Pixel",
+  "Polar",
   "Prism",
+  "Quiet",
+  "Radiant",
+  "Raw",
+  "Remote",
+  "Satin",
+  "Sharp",
+  "Signal",
+  "Silken",
+  "Solar",
+  "Soft",
+  "Static",
+  "Still",
   "Studio",
+  "Subtle",
+  "Tactile",
+  "Tonal",
+  "Urban",
+  "Velvet",
+  "Virtual",
+  "Vivid",
+  "Warm",
+  "Washed",
+  "Wired",
 ]
 
 const paletteNouns = [
-  "Bloom",
-  "Field",
-  "Current",
-  "Garden",
-  "Horizon",
   "Archive",
+  "Atlas",
+  "Balance",
+  "Band",
+  "Bloom",
+  "Circuit",
+  "Cloud",
+  "Current",
+  "Drift",
+  "Field",
+  "Filter",
+  "Frame",
+  "Garden",
+  "Gradient",
+  "Grid",
+  "Harbor",
+  "Horizon",
+  "Index",
   "Interval",
+  "Layer",
+  "Light",
+  "Map",
+  "Matrix",
+  "Memory",
+  "Mesh",
+  "Method",
+  "Mist",
+  "Mode",
+  "Mood",
+  "Noise",
+  "North",
+  "Orbit",
+  "Palette",
+  "Pattern",
+  "Phase",
+  "Plane",
+  "Point",
+  "Pulse",
+  "Range",
+  "Relay",
+  "Rhythm",
+  "Signal",
+  "Sky",
+  "Spectrum",
+  "Stack",
+  "State",
+  "Stream",
+  "Studio",
   "Weather",
   "System",
-  "Spectrum",
+  "Tempo",
+  "Trace",
+  "Vector",
+  "Vista",
+  "Wave",
+  "Window",
+  "Zone",
 ]
 
-const lightNames = ["Porcelain", "Linen", "Chalk", "Parchment", "Pearl"]
-const midNames = ["Sage", "Clay", "Moss", "Ochre", "Dust", "Cedar"]
-const vividNames = ["Yuzu", "Coral", "Berry", "Azure", "Vermilion", "Iris"]
-const darkNames = ["Ink", "Graphite", "Night", "Carbon", "Pine"]
+const lightNames = [
+  "Alabaster",
+  "Bone",
+  "Canvas",
+  "Chalk",
+  "Cloud",
+  "Cotton",
+  "Frost",
+  "Glass",
+  "Ivory",
+  "Lace",
+  "Linen",
+  "Milk",
+  "Mist",
+  "Moon",
+  "Opal",
+  "Parchment",
+  "Pearl",
+  "Porcelain",
+  "Rice",
+  "Shell",
+  "Snow",
+  "Vellum",
+]
+
+const midNames = [
+  "Basalt",
+  "Cedar",
+  "Clay",
+  "Dove",
+  "Drift",
+  "Dust",
+  "Flint",
+  "Fog",
+  "Haze",
+  "Moss",
+  "Ochre",
+  "Olive",
+  "Pebble",
+  "Reed",
+  "Sage",
+  "Slate",
+  "Smoke",
+  "Stone",
+  "Taupe",
+  "Willow",
+]
+
+const neutralNames = [
+  "Ash",
+  "Cement",
+  "Graphite",
+  "Gravel",
+  "Iron",
+  "Lead",
+  "Nickel",
+  "Pewter",
+  "Platinum",
+  "Quartz",
+  "Silver",
+  "Steel",
+]
+
+const vividNames = [
+  "Aqua",
+  "Azure",
+  "Berry",
+  "Bolt",
+  "Candy",
+  "Coral",
+  "Flare",
+  "Glow",
+  "Iris",
+  "Laser",
+  "Lime",
+  "Pulse",
+  "Rose",
+  "Signal",
+  "Spark",
+  "Tango",
+  "Vermilion",
+  "Yuzu",
+]
+
+const darkNames = [
+  "Carbon",
+  "Charcoal",
+  "Cocoa",
+  "Eclipse",
+  "Graphite",
+  "Ink",
+  "Licorice",
+  "Midnight",
+  "Night",
+  "Obsidian",
+  "Onyx",
+  "Pine",
+  "Pitch",
+  "Raven",
+  "Shadow",
+  "Void",
+]
+
+const redNames = ["Brick", "Cardinal", "Cherry", "Crimson", "Garnet", "Ruby"]
+const orangeNames = ["Amber", "Apricot", "Canyon", "Copper", "Marigold", "Tiger"]
+const yellowNames = ["Citrine", "Honey", "Maize", "Saffron", "Sun", "Wheat"]
+const greenNames = ["Fern", "Juniper", "Kiwi", "Laurel", "Mint", "Spruce"]
+const cyanNames = ["Aqua", "Lagoon", "Pool", "Surf", "Teal", "Tide"]
+const blueNames = ["Cobalt", "Denim", "Indigo", "Marine", "Sky", "Ultramarine"]
+const violetNames = ["Amethyst", "Grape", "Lavender", "Lilac", "Orchid", "Violet"]
+const magentaNames = ["Fuchsia", "Peony", "Plum", "Raspberry", "Rose", "Wine"]
 
 type PresetConfig = {
   harmonies: readonly PaletteHarmony[]
@@ -80,31 +301,31 @@ type PresetConfig = {
 
 const presetConfigs = {
   "ui-soft": {
-    harmonies: ["analogous", "complementary", "cool", "muted"],
+    harmonies: paletteHarmonies,
     lightness: [0.94, 0.84, 0.72, 0.61, 0.5, 0.39, 0.29],
     chroma: { low: 0.035, mid: 0.09, high: 0.13 },
     jitter: { hue: 6, lightness: 0.025, chroma: 0.012 },
   },
   "editorial-bold": {
-    harmonies: ["complementary", "triadic", "warm", "vivid"],
+    harmonies: paletteHarmonies,
     lightness: [0.93, 0.8, 0.67, 0.55, 0.44, 0.33, 0.23],
     chroma: { low: 0.055, mid: 0.13, high: 0.19 },
     jitter: { hue: 8, lightness: 0.03, chroma: 0.016 },
   },
   "minimal-neutral": {
-    harmonies: ["monochrome", "muted", "analogous", "cool"],
+    harmonies: paletteHarmonies,
     lightness: [0.95, 0.86, 0.75, 0.63, 0.5, 0.37, 0.25],
     chroma: { low: 0.018, mid: 0.045, high: 0.07 },
     jitter: { hue: 4, lightness: 0.018, chroma: 0.008 },
   },
   "brand-vivid": {
-    harmonies: ["triadic", "complementary", "vivid", "warm"],
+    harmonies: paletteHarmonies,
     lightness: [0.92, 0.78, 0.66, 0.54, 0.43, 0.32, 0.22],
     chroma: { low: 0.065, mid: 0.15, high: 0.22 },
     jitter: { hue: 9, lightness: 0.03, chroma: 0.02 },
   },
   "dark-interface": {
-    harmonies: ["cool", "analogous", "muted", "complementary"],
+    harmonies: paletteHarmonies,
     lightness: [0.82, 0.69, 0.56, 0.44, 0.33, 0.24, 0.16],
     chroma: { low: 0.03, mid: 0.085, high: 0.14 },
     jitter: { hue: 5, lightness: 0.02, chroma: 0.012 },
@@ -273,7 +494,7 @@ function buildOklchRamp(
   random: () => number,
 ) {
   const config = presetConfigs[preset]
-  const offsets = createHueOffsets(colorCount, harmony)
+  const offsets = createHueOffsets(colorCount, harmony, random)
   const lightness = createLightnessRamp(colorCount, config, harmony)
   const chroma = createChromaRamp(colorCount, config, harmony)
 
@@ -306,28 +527,70 @@ function createBaseHue(harmony: PaletteHarmony, random: () => number) {
   return Math.round(random() * 360)
 }
 
-function createHueOffsets(colorCount: number, harmony: PaletteHarmony) {
+function createHueOffsets(
+  colorCount: number,
+  harmony: PaletteHarmony,
+  random: () => number,
+) {
   if (harmony === "complementary") {
-    return balancedOffsets([0, 180, 24, 204, -24, 156, 228], colorCount)
+    return balancedOffsets(
+      pick(
+        [
+          [0, 180, 24, 204, -24],
+          [0, 172, 188, 34, 214],
+          [0, 150, 210, -28, 182],
+          [0, 180, 60, 240, 300],
+        ],
+        random,
+      ),
+      colorCount,
+    )
   }
 
   if (harmony === "triadic") {
-    return balancedOffsets([0, 120, 240, 28, 148, 268, 320], colorCount)
+    return balancedOffsets(
+      pick(
+        [
+          [0, 120, 240, 28, 148],
+          [0, 112, 232, -24, 256],
+          [0, 128, 248, 48, 288],
+          [0, 96, 216, 144, 264],
+        ],
+        random,
+      ),
+      colorCount,
+    )
   }
 
   if (harmony === "monochrome") {
-    return Array.from({ length: colorCount }, (_, index) => (index - colorCount / 2) * 3)
+    const spread = randomBetween(random, 6, 22)
+    return createArcOffsets(colorCount, spread)
   }
 
-  if (harmony === "warm" || harmony === "cool" || harmony === "muted") {
-    return createArcOffsets(colorCount, harmony === "muted" ? 54 : 78)
+  if (harmony === "warm" || harmony === "cool") {
+    return createArcOffsets(colorCount, randomBetween(random, 48, 112))
+  }
+
+  if (harmony === "muted") {
+    return createArcOffsets(colorCount, randomBetween(random, 28, 74))
   }
 
   if (harmony === "vivid") {
-    return balancedOffsets([0, 96, 192, 288, 48, 144, 240], colorCount)
+    return balancedOffsets(
+      pick(
+        [
+          [0, 96, 192, 288, 48],
+          [0, 72, 168, 264, 336],
+          [0, 110, 220, 36, 300],
+          [0, 84, 204, 276, 144],
+        ],
+        random,
+      ),
+      colorCount,
+    )
   }
 
-  return createArcOffsets(colorCount, Math.min(96, 22 * colorCount))
+  return createArcOffsets(colorCount, randomBetween(random, 46, 118))
 }
 
 function balancedOffsets(offsets: readonly number[], colorCount: number) {
@@ -520,7 +783,7 @@ function createPaletteColor(
   usedNames: Set<string>,
 ): PaletteColor {
   return {
-    name: createColorName(color, index, usedNames),
+    name: createColorName(color, hex, index, usedNames),
     hex,
   }
 }
@@ -538,11 +801,12 @@ function toHex(color: OklchColor) {
 
 function createColorName(
   color: OklchColor,
+  hex: string,
   index: number,
   usedNames: Set<string>,
 ) {
   const names = getNameCandidates(color, index)
-  const startIndex = Math.floor((wrapHue(color.h) / 360) * names.length)
+  const startIndex = hashString(`${hex}:${index}`) % names.length
 
   for (let offset = 0; offset < names.length; offset += 1) {
     const name = names[(startIndex + offset) % names.length]!
@@ -559,10 +823,31 @@ function createColorName(
 }
 
 function getNameCandidates(color: OklchColor, index: number) {
-  if (index === 0 || color.l >= 0.88) return lightNames
-  if (color.l <= 0.36) return darkNames
-  if (color.c >= 0.13) return vividNames
-  return midNames
+  const toneNames =
+    index === 0 || color.l >= 0.88
+      ? lightNames
+      : color.l <= 0.36
+        ? darkNames
+        : color.c < 0.045
+          ? neutralNames
+          : color.c >= 0.13
+            ? vividNames
+            : midNames
+
+  return unique([...toneNames, ...getHueNameCandidates(color.h)])
+}
+
+function getHueNameCandidates(hue: number) {
+  const wrappedHue = wrapHue(hue)
+
+  if (wrappedHue < 18 || wrappedHue >= 346) return redNames
+  if (wrappedHue < 54) return orangeNames
+  if (wrappedHue < 86) return yellowNames
+  if (wrappedHue < 154) return greenNames
+  if (wrappedHue < 196) return cyanNames
+  if (wrappedHue < 254) return blueNames
+  if (wrappedHue < 302) return violetNames
+  return magentaNames
 }
 
 function createPaletteName(random: () => number) {
@@ -599,6 +884,21 @@ function createRandom(seed: string) {
 
 function pick<T>(items: readonly T[], random: () => number) {
   return items[Math.floor(random() * items.length)]!
+}
+
+function unique<T>(items: readonly T[]) {
+  return Array.from(new Set(items))
+}
+
+function hashString(value: string) {
+  let hash = 2166136261
+
+  for (const character of value) {
+    hash ^= character.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return hash >>> 0
 }
 
 function randomBetween(random: () => number, min: number, max: number) {

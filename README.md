@@ -80,15 +80,15 @@ The generator creates a batch of candidates, scores them for contrast, separatio
 Create a deterministic post plan and render the post preview:
 
 ```bash
-pnpm run publish:preview -- --date 2026-08-13 --attempts 16 --min-score 70 --plan output/post-plan.json --json output/post-palette.json --png output/post-palette.png --message output/post-message.txt
+pnpm run publish:preview -- --date 2026-08-13 --attempts 32 --min-score 70 --plan output/post-plan.json --json output/post-palette.json --png output/post-palette.png --message output/post-message.txt
 ```
 
 The publication strategy picks the post inputs from a date-based seed:
 
 - color count
 - preset
-- harmony mode compatible with the preset
-- candidate batch size
+- harmony mode
+- candidate batch size tuned by preset
 - renderer theme, currently `figma` by default
 - Telegram-ready message text with color names and hex codes
 

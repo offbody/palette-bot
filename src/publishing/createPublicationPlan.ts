@@ -41,11 +41,11 @@ const presetWeights = [
 ] as const satisfies readonly WeightedOption<PalettePreset>[]
 
 const candidateCounts = {
-  "ui-soft": 24,
-  "editorial-bold": 32,
-  "minimal-neutral": 20,
-  "brand-vivid": 32,
-  "dark-interface": 28,
+  "ui-soft": 40,
+  "editorial-bold": 56,
+  "minimal-neutral": 36,
+  "brand-vivid": 56,
+  "dark-interface": 44,
 } as const satisfies Record<PalettePreset, number>
 
 export function createPublicationPlan(
@@ -116,8 +116,8 @@ function validateColorCount(colorCount: number) {
 }
 
 function validateCandidates(candidates: number) {
-  if (!Number.isInteger(candidates) || candidates < 1 || candidates > 96) {
-    throw new Error("Publication candidates must be between 1 and 96.")
+  if (!Number.isInteger(candidates) || candidates < 1 || candidates > 160) {
+    throw new Error("Publication candidates must be between 1 and 160.")
   }
 }
 

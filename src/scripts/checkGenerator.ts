@@ -84,6 +84,35 @@ for (const harmony of paletteHarmonies) {
   console.log(`${harmony}: score ${palette.metadata.score}`)
 }
 
+const samplePaletteNames = new Set<string>()
+const sampleColorNames = new Set<string>()
+
+for (let index = 0; index < 40; index += 1) {
+  const palette = generatePalette({
+    colorCount: 5,
+    seed: `ci-diversity-${index}`,
+    candidates: 12,
+  })
+
+  samplePaletteNames.add(palette.paletteName)
+
+  for (const color of palette.colors) {
+    sampleColorNames.add(color.name)
+  }
+}
+
+if (samplePaletteNames.size < 34) {
+  throw new Error(
+    `Expected at least 34 unique palette names; received ${samplePaletteNames.size}.`,
+  )
+}
+
+if (sampleColorNames.size < 70) {
+  throw new Error(
+    `Expected at least 70 unique color names; received ${sampleColorNames.size}.`,
+  )
+}
+
 function assertMetadata(
   palette: ReturnType<typeof generatePalette>,
   colorCount: number,

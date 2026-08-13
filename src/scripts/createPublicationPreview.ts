@@ -23,7 +23,7 @@ const candidates = args.candidates
   : undefined
 const strategyAttempts = args.attempts
   ? Number.parseInt(args.attempts, 10)
-  : 12
+  : 32
 const minimumScore = args["min-score"]
   ? Number.parseInt(args["min-score"], 10)
   : 70

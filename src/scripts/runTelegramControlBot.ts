@@ -498,7 +498,7 @@ function getDraft(drafts: Map<number, PublishDraft>, userId: number) {
 
   const draft = {
     dryRun: true,
-    attempts: 16,
+    attempts: 32,
     minScore: 70,
     colorCount: "auto",
     preset: "auto",
