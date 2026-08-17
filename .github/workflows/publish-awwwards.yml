@@ -35,7 +35,8 @@ jobs:
   publish-awwwards:
     name: Publish Awwwards
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # Scheduled runs can wait up to 70 minutes before scraping and publishing.
+    timeout-minutes: 120
 
     env:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
